@@ -2,7 +2,7 @@ import React, { useState, useEffect, createContext, useContext } from 'react';
 import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { ShoppingBag, User as UserIcon, Trash2, Plus, LogOut, Pencil, X, Check, Heart, Star, Menu, Ruler } from 'lucide-react';
 
-const API_URL = 'https://luxury-footwear-app.onrender.com';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const getVisitorId = () => {
   let vid = localStorage.getItem('visitor_id');
   if (!vid) {
