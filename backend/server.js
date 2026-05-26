@@ -10,9 +10,15 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-// --- FIX 1: RESTRICT CORS TO YOUR LIVE VERCEL APP ---
+// --- FIX: CLEAN & STABLE CORS ORIGIN FUNCTION ---
 app.use(cors({
-  origin: ['https://luxury-footwear-ftvldezaz-apurva1.vercel.app', 'http://localhost:5173'],
+  origin: function (origin, callback) {
+    if (!origin || origin.endsWith('.vercel.app') || origin.includes('localhost')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 
@@ -66,8 +72,6 @@ const requireAuth = (req, res, next) => {
 };
 
 // --- ROUTES ---
-
-// --- FIX 2: ALIGNED AUTH ENDPOINTS WITH FRONTEND (/api/auth/signup & /api/auth/login) ---
 app.post('/api/auth/signup', async (req, res) => {
   const { username, password, role } = req.body;
   try {
@@ -94,7 +98,6 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// --- BASE API ROUTES ---
 app.get('/api/products', async (req, res) => {
   const products = await Product.find();
   res.json(products);
