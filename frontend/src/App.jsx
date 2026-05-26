@@ -2,8 +2,8 @@ import React, { useState, useEffect, createContext, useContext } from 'react';
 import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { ShoppingBag, User as UserIcon, Trash2, Plus, LogOut, Pencil, X, Check, Heart, Star, Menu, Ruler } from 'lucide-react';
 
-// FIX: Automatically appended /api to match your backend router paths
-const API_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'https://luxury-footwear-app.onrender.com/api';
+// FIXED: Prevents double-appending paths if your environment variable already has /api
+const API_URL = import.meta.env.VITE_API_URL || 'https://luxury-footwear-app.onrender.com/api';
 
 const getVisitorId = () => {
   let vid = localStorage.getItem('visitor_id');
@@ -594,8 +594,101 @@ function Cart() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h2 className="text-2xl font-light mb-8 uppercase tracking-wide">Your Cart</h2>
-      {/* Rest of Cart UI goes here... */}
+      <h2 className="text-2xl font-light mb-8 uppercase tracking-wide">Your Shopping Cart</h2>
+      <div className="space-y-6">
+        {cart.map((item, idx) => (
+          <div key={idx} className="flex items-center justify-between border-b border-stone-100 pb-6">
+            <div className="flex items-center gap-6">
+              <div className="w-16 h-20 bg-stone-100 overflow-hidden">
+                <img src={item.image} alt={item.name} className="object-cover w-full h-full" />
+              </div>
+              <div>
+                <h3 className="font-medium text-stone-800">{item.name}</h3>
+                <p className="text-stone-500 text-sm">Size: {item.size || '38'}</p>
+                <p className="text-stone-800 text-sm mt-1">Rs {item.price}</p>
+              </div>
+            </div>
+            <button onClick={() => handleRemove(item.productId)} className="text-stone-400 hover:text-stone-900 p-2">
+              <Trash2 size={18} strokeWidth={1.5} />
+            </button>
+          </div>
+        ))}
+        <div className="pt-6 flex justify-between items-baseline">
+          <span className="text-stone-500 uppercase tracking-wider text-sm">Subtotal</span>
+          <span className="text-xl font-medium">Rs {total}</span>
+        </div>
+        <button onClick={handleCheckout} disabled={isCheckingOut} className="w-full bg-stone-900 text-white py-4 uppercase tracking-widest text-sm font-medium hover:bg-stone-800 transition-colors mt-8">
+          {isCheckingOut ? 'Processing...' : 'Proceed to Checkout'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Admin() {
+  return (
+    <div className="text-center py-20">
+      <h2 className="text-2xl font-light uppercase tracking-widest mb-4">Admin Dashboard</h2>
+      <p className="text-stone-500">Product inventory management console access active.</p>
+    </div>
+  );
+}
+
+// ADDED: Missing Auth component interface logic to stop your build from crashing
+function Auth() {
+  const { setUser, setCart, setWishlist } = useContext(AppContext);
+  const navigate = useNavigate();
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const endpoint = isLogin ? '/auth/login' : '/auth/register';
+    const payload = isLogin ? { email, password } : { name, email, password };
+    
+    try {
+      const data = await fetchAPI(endpoint, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+        setUser(data.user);
+        
+        // Fetch fresh cart and wishlist records for the authenticated session
+        const cartRes = await fetchAPI('/cart').catch(() => ({ cart: [] }));
+        setCart(cartRes.cart || []);
+        const wishRes = await fetchAPI('/wishlist').catch(() => ({ wishlist: [] }));
+        setWishlist(wishRes.wishlist || []);
+
+        alert("Success!");
+        navigate('/');
+      }
+    } catch (err) {
+      alert(err.message || "Authentication failed");
+    }
+  };
+
+  return (
+    <div className="max-w-md mx-auto my-12 p-6 border border-stone-200 bg-white shadow-sm">
+      <h2 className="text-xl font-light uppercase tracking-widest text-center mb-6">
+        {isLogin ? 'Sign In' : 'Create Account'}
+      </h2>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {!isLogin && (
+          <input type="text" placeholder="Full Name" value={name} onChange={e => setName(e.target.value)} required className="w-full border p-3 text-sm focus:outline-none focus:border-stone-900" />
+        )}
+        <input type="email" placeholder="Email Address" value={email} onChange={e => setEmail(e.target.value)} required className="w-full border p-3 text-sm focus:outline-none focus:border-stone-900" />
+        <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required className="w-full border p-3 text-sm focus:outline-none focus:border-stone-900" />
+        <button type="submit" className="w-full bg-stone-900 text-white py-3 uppercase tracking-widest text-xs font-medium hover:bg-stone-800 transition-colors">
+          {isLogin ? 'Log In' : 'Register'}
+        </button>
+      </form>
+      <p className="text-xs text-center text-stone-500 mt-4 cursor-pointer hover:underline" onClick={() => setIsLogin(!isLogin)}>
+        {isLogin ? "Don't have an account? Register here" : "Already have an account? Sign In"}
+      </p>
     </div>
   );
 }
