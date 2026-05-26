@@ -2,7 +2,7 @@ import React, { useState, useEffect, createContext, useContext } from 'react';
 import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { ShoppingBag, User as UserIcon, Trash2, Plus, LogOut, Pencil, X, Check, Heart, Star, Menu, Ruler } from 'lucide-react';
 
-// FIXED: Base backend server domain
+// Fixed backend server domain
 const API_URL = 'https://luxury-footwear-app.onrender.com';
 
 const getVisitorId = () => {
@@ -14,7 +14,7 @@ const getVisitorId = () => {
   return vid;
 };
 
-// FIXED: Automatically adds the /api route prefix so it talks to your Render server routes perfectly
+// Automatically adds the /api route prefix to talk to your Render server routes perfectly
 const fetchAPI = async (endpoint, options = {}) => {
   const token = localStorage.getItem('token');
   const headers = {
@@ -24,7 +24,6 @@ const fetchAPI = async (endpoint, options = {}) => {
     ...options.headers
   };
   
-  // Appends /api securely to hit your back-end controller setup
   const response = await fetch(`${API_URL}/api${endpoint}`, { ...options, headers });
   if (!response.ok) throw new Error(await response.text());
   return response.json();
@@ -40,10 +39,12 @@ export default function App() {
   useEffect(() => {
     const initializeUser = async () => {
       const token = localStorage.getItem('token');
-      if (token) {
+      const savedUser = localStorage.getItem('user_details');
+      
+      if (token && savedUser) {
         try {
-          const profile = await fetchAPI('/auth/profile');
-          setUser(profile.user);
+          // Setting the state safely using your local profile backup
+          setUser(JSON.parse(savedUser));
           
           const cartRes = await fetchAPI('/cart');
           setCart(cartRes.cart || []);
@@ -61,6 +62,7 @@ export default function App() {
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user_details');
     setUser(null);
     setCart([]);
     setWishlist([]);
@@ -88,7 +90,7 @@ export default function App() {
               <Route path="/platform" element={<div className="container mx-auto px-4 py-16 max-w-6xl"><Products category="platform" title="Platform Shoes" /></div>} />
               <Route path="/kitten" element={<div className="container mx-auto px-4 py-16 max-w-6xl"><Products category="kitten" title="Kitten Heels" /></div>} />
 
-              <Route path="/auth" element={<div className="container mx-auto px-4 py-8 max-w-6xl"><Auth /></div>} />
+              <Route path="/auth" element={<div className="container mx-auto px-4 py-8 max-w-md"><Auth /></div>} />
               <Route path="/cart" element={<div className="container mx-auto px-4 py-8 max-w-6xl"><Cart /></div>} />
               <Route path="/wishlist" element={<div className="container mx-auto px-4 py-8 max-w-6xl"><Wishlist /></div>} /> 
               <Route path="/admin" element={<div className="container mx-auto px-4 py-8 max-w-6xl"><Admin /></div>} />
@@ -440,51 +442,6 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
                   <Ruler size={12} strokeWidth={2} /> Size Guide
                 </button>
               </div>
-
-              <div className="mt-4 pt-3 border-t border-stone-100 w-full">
-                <button onClick={() => setShowReviews(!showReviews)} className="text-[11px] uppercase tracking-widest text-stone-500 hover:text-stone-900 flex items-center justify-between w-full">
-                  <span>Reviews ({p.reviews?.length || 0}) {p.reviews?.length > 0 && `★ ${avgRating}`}</span>
-                  <span>{showReviews ? '-' : '+'}</span>
-                </button>
-                
-                {showReviews && (
-                  <div className="mt-4 space-y-4">
-                    {p.reviews?.length > 0 ? (
-                      p.reviews.map((r, i) => (
-                        <div key={i} className="bg-stone-50 p-3 text-xs">
-                          <div className="flex justify-between mb-1">
-                            <span className="font-medium">{r.user}</span>
-                            <span className="text-yellow-500">{'★'.repeat(r.rating)}</span>
-                          </div>
-                          <p className="text-stone-600 mb-2">{r.comment}</p>
-                          {r.image && (
-                            <div className="mt-2">
-                              <img src={r.image} alt="Customer review" className="w-20 h-20 object-cover border border-stone-200 rounded-sm" />
-                            </div>
-                          )}
-                        </div>
-                      ))
-                    ) : <p className="text-xs text-stone-400 italic">Be the first to review this.</p>}
-                    
-                    {user ? (
-                      <form onSubmit={handleSubmitReview} className="space-y-2 mt-4 pt-4 border-t border-stone-100">
-                        <select value={reviewRating} onChange={e=>setReviewRating(e.target.value)} className="w-full border border-stone-200 p-2 text-xs bg-white text-stone-600">
-                          <option value="5">5 Stars - Excellent</option>
-                          <option value="4">4 Stars - Very Good</option>
-                          <option value="3">3 Stars - Average</option>
-                          <option value="2">2 Stars - Poor</option>
-                          <option value="1">1 Star - Terrible</option>
-                        </select>
-                        <textarea value={reviewComment} onChange={e=>setReviewComment(e.target.value)} placeholder="Write your thoughts..." required className="w-full border border-stone-200 p-2 text-xs bg-white focus:outline-none focus:border-stone-900" rows="2"></textarea>
-                        <input type="text" value={reviewImage} onChange={e=>setReviewImage(e.target.value)} placeholder="Add a Photo URL (optional)" className="w-full border border-stone-200 p-2 text-xs bg-white focus:outline-none focus:border-stone-900" />
-                        <button type="submit" className="w-full bg-stone-900 text-white py-2 text-[10px] uppercase tracking-widest hover:bg-stone-800 transition-colors">Post Review</button>
-                      </form>
-                    ) : (
-                      <p className="text-xs text-stone-400 mt-2">Log in to leave a review.</p>
-                    )}
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         </>
@@ -523,6 +480,64 @@ function SizeGuideModal({ onClose }) {
         </div>
         <button onClick={onClose} className="w-full mt-8 bg-stone-900 text-white py-3 uppercase tracking-widest text-xs hover:bg-stone-800 transition-colors">Close Guide</button>
       </div>
+    </div>
+  );
+}
+
+function Auth() {
+  const [isLogin, setIsLogin] = useState(true);
+  const [formData, setFormData] = useState({ username: '', password: '', role: 'user' });
+  const { setUser, setCart, setWishlist } = useContext(AppContext);
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const endpoint = isLogin ? '/auth/login' : '/auth/signup';
+    try {
+      const data = await fetchAPI(endpoint, { method: 'POST', body: JSON.stringify(formData) });
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user_details', JSON.stringify(data.user));
+        setUser(data.user);
+        setCart(data.user.cart || []);
+        setWishlist(data.user.wishlist || []);
+        alert(isLogin ? "Logged in successfully!" : "Account created successfully!");
+        navigate('/');
+      }
+    } catch (err) {
+      alert(err.message || "Authentication failed. Try again.");
+    }
+  };
+
+  return (
+    <div className="bg-white border border-stone-200 p-8 shadow-sm">
+      <h2 className="text-xl font-light uppercase tracking-widest text-center mb-6">{isLogin ? 'Login' : 'Register'}</h2>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-xs uppercase tracking-wider text-stone-500 mb-1">Username / Email</label>
+          <input type="text" required value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} className="w-full border border-stone-200 p-3 text-sm bg-stone-50 focus:outline-none focus:border-stone-900" />
+        </div>
+        <div>
+          <label className="block text-xs uppercase tracking-wider text-stone-500 mb-1">Password</label>
+          <input type="password" required value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full border border-stone-200 p-3 text-sm bg-stone-50 focus:outline-none focus:border-stone-900" />
+        </div>
+        {!isLogin && (
+          <div>
+            <label className="block text-xs uppercase tracking-wider text-stone-500 mb-1">Account Type</label>
+            <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className="w-full border border-stone-200 p-3 text-sm bg-stone-50 focus:outline-none">
+              <option value="user">Standard Customer</option>
+              <option value="admin">Store Administrator</option>
+            </select>
+          </div>
+        )}
+        <button type="submit" className="w-full bg-stone-900 text-white py-3 uppercase tracking-widest text-xs font-medium hover:bg-stone-800 transition-colors pt-4">
+          {isLogin ? 'Sign In' : 'Create Account'}
+        </button>
+      </form>
+      <p className="text-center text-xs text-stone-500 mt-6">
+        {isLogin ? "New to the platform?" : "Already have an account?"}{' '}
+        <button onClick={() => setIsLogin(!isLogin)} className="text-stone-900 font-medium underline ml-1">{isLogin ? 'Register here' : 'Login here'}</button>
+      </p>
     </div>
   );
 }
@@ -596,27 +611,26 @@ function Cart() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h2 className="text-2xl font-light mb-8 uppercase tracking-wide">Your Shopping Cart</h2>
+      <h2 className="text-2xl font-light mb-8 uppercase">Your Shopping Cart</h2>
       <div className="space-y-4">
         {cart.map((item, idx) => (
-          <div key={idx} className="flex justify-between items-center border-b pb-4">
-            <div className="flex items-center gap-4">
-              <img src={item.image} alt={item.name} className="w-16 h-20 object-cover" />
+          <div key={idx} className="flex gap-4 border-b pb-4 items-center justify-between">
+            <div className="flex gap-4 items-center">
+              <img src={item.image} alt={item.name} className="w-16 h-16 object-cover bg-stone-100" />
               <div>
-                <h3 className="font-medium">{item.name}</h3>
-                <p className="text-stone-500 text-xs">Size: {item.size || '38'}</p>
+                <h4 className="font-medium">{item.name}</h4>
                 <p className="text-stone-500 text-sm">Rs {item.price}</p>
               </div>
             </div>
-            <button onClick={() => handleRemove(item._id)} className="text-stone-400 hover:text-stone-900"><Trash2 size={18} /></button>
+            <button onClick={() => handleRemove(item._id)} className="text-stone-400 hover:text-red-500"><Trash2 size={18}/></button>
           </div>
         ))}
-        <div className="pt-6 border-t flex justify-between items-center font-medium text-lg">
+        <div className="pt-6 flex justify-between items-center font-medium text-lg">
           <span>Total:</span>
           <span>Rs {total}</span>
         </div>
-        <button onClick={handleCheckout} disabled={isCheckingOut} className="w-full bg-stone-900 text-white py-4 uppercase tracking-widest text-sm mt-6 hover:bg-stone-800 disabled:bg-stone-400">
-          {isCheckingOut ? 'Processing...' : 'Proceed to Checkout'}
+        <button disabled={isCheckingOut} onClick={handleCheckout} className="w-full bg-stone-900 text-white py-3 uppercase tracking-widest text-xs font-medium hover:bg-stone-800 transition-colors mt-6">
+          {isCheckingOut ? 'Processing...' : 'Complete Purchase'}
         </button>
       </div>
     </div>
@@ -624,97 +638,38 @@ function Cart() {
 }
 
 function Admin() {
-  const [form, setForm] = useState({ name: '', price: '', image: '', category: 'luxury' });
-  try {
-    return (
-      <div className="max-w-md mx-auto bg-stone-50 p-8 border">
-        <h2 className="text-xl font-light uppercase tracking-widest mb-6">Add Luxury Product</h2>
-        <form onSubmit={async (e) => {
-          e.preventDefault();
-          await fetchAPI('/products', { method: 'POST', body: JSON.stringify({ ...form, price: Number(form.price) }) });
-          setForm({ name: '', price: '', image: '', category: 'luxury' });
-          alert("Product Added!");
-        }} className="space-y-4">
-          <input type="text" placeholder="Product Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full p-3 border text-sm" required />
-          <input type="number" placeholder="Price (Rs)" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} className="w-full p-3 border text-sm" required />
-          <input type="text" placeholder="Image Path (e.g. /images/shoes.jpg)" value={form.image} onChange={e => setForm({ ...form, image: e.target.value })} className="w-full p-3 border text-sm" required />
-          <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="w-full p-3 border text-sm bg-white">
-            <option value="bellis">Bellis</option>
-            <option value="stiletto">Stiletto</option>
-            <option value="wedges">Wedges</option>
-            <option value="platform">Platform</option>
-            <option value="kitten">Kitten</option>
-          </select>
-          <button type="submit" className="w-full bg-stone-900 text-white py-3 uppercase tracking-widest text-xs">Upload Product</button>
-        </form>
-      </div>
-    );
-  } catch (err) { return <div>Admin loading error</div>; }
-}
+  const [newProduct, setNewProduct] = useState({ name: '', price: '', image: '', category: 'luxury' });
 
-// FIXED: Embedded the Auth Component inside App.jsx so it is defined and stops throwing errors!
-function Auth() {
-  const [isLogin, setIsLogin] = useState(true);
-  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
-  const { setUser, setCart, setWishlist } = useContext(AppContext);
-  const navigate = useNavigate();
-
-  const handleSubmit = async (e) => {
+  const handleAddProduct = async (e) => {
     e.preventDefault();
-    const endpoint = isLogin ? '/auth/login' : '/auth/register';
     try {
-      const data = await fetchAPI(endpoint, {
-        method: 'POST',
-        body: JSON.stringify(formData)
-      });
-      
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-        setUser(data.user);
-        
-        // Fetch real-time cart/wishlist sync right after authenticating
-        const cartRes = await fetchAPI('/cart').catch(() => ({ cart: [] }));
-        setCart(cartRes.cart || []);
-        const wishRes = await fetchAPI('/wishlist').catch(() => ({ wishlist: [] }));
-        setWishlist(wishRes.wishlist || []);
-        
-        alert(isLogin ? "Logged in successfully!" : "Registered successfully!");
-        navigate('/');
-      }
-    } catch (err) {
-      alert(err.message || "Authentication failed");
-    }
+      await fetchAPI('/products', { method: 'POST', body: JSON.stringify({ ...newProduct, price: Number(newProduct.price) }) });
+      setNewProduct({ name: '', price: '', image: '', category: 'luxury' });
+      alert("Product added successfully!");
+    } catch (err) { alert("Failed to create product"); }
   };
 
   return (
-    <div className="max-w-md mx-auto bg-white p-8 border border-stone-200 shadow-sm mt-12">
-      <h2 className="text-2xl font-light uppercase tracking-widest text-center mb-8">
-        {isLogin ? 'Login' : 'Create Account'}
-      </h2>
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {!isLogin && (
-          <div>
-            <label className="block text-xs uppercase tracking-wider text-stone-500 mb-2">Name</label>
-            <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full border p-3 text-sm focus:outline-none focus:border-stone-900" required />
-          </div>
-        )}
-        <div>
-          <label className="block text-xs uppercase tracking-wider text-stone-500 mb-2">Email Address</label>
-          <input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full border p-3 text-sm focus:outline-none focus:border-stone-900" required />
-        </div>
-        <div>
-          <label className="block text-xs uppercase tracking-wider text-stone-500 mb-2">Password</label>
-          <input type="password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} className="w-full border p-3 text-sm focus:outline-none focus:border-stone-900" required />
-        </div>
-        <button type="submit" className="w-full bg-stone-900 text-white py-3.5 uppercase tracking-widest text-xs font-medium hover:bg-stone-800 transition-colors mt-4">
-          {isLogin ? 'Sign In' : 'Register'}
+    <div className="max-w-md mx-auto bg-stone-50 border border-stone-200 p-8 shadow-sm">
+      <h3 className="text-lg font-light uppercase tracking-widest mb-6">Inventory Management</h3>
+      <form onSubmit={handleAddProduct} className="space-y-4">
+        <input type="text" placeholder="Product Name" required value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="w-full border p-3 bg-white text-sm focus:outline-none" />
+        <input type="number" placeholder="Price (INR)" required value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} className="w-full border p-3 bg-white text-sm focus:outline-none" />
+        <input type="text" placeholder="Image URL (e.g. /images/shoes.jpg)" required value={newProduct.image} onChange={e => setNewProduct({...newProduct, image: e.target.value})} className="w-full border p-3 bg-white text-sm focus:outline-none" />
+        <select value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})} className="w-full border p-3 bg-white text-sm focus:outline-none">
+          <option value="luxury">Trending Luxury</option>
+          <option value="bellis">Bellis</option>
+          <option value="stiletto">Stiletto</option>
+          <option value="wedges">Wedges</option>
+          <option value="platform">Platform</option>
+          <option value="kitten">Kitten</option>
+          <option value="summer">Summer Special</option>
+          <option value="casual">Casual Wear</option>
+        </select>
+        <button type="submit" className="w-full bg-stone-900 text-white py-3 uppercase tracking-widest text-xs font-bold hover:bg-stone-800 transition-colors">
+          Publish Product
         </button>
       </form>
-      <div className="text-center mt-6">
-        <button onClick={() => setIsLogin(!isLogin)} className="text-xs text-stone-400 hover:text-stone-900 transition-colors underline underline-offset-4">
-          {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
-        </button>
-      </div>
     </div>
   );
 }
