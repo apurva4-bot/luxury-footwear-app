@@ -126,11 +126,11 @@ export default function App() {
 
 function Home() {
   const categories = [
-    { name: 'Bellis', path: '/bellis', image: '/images/home/catalogues/bellis.jpg' },
-    { name: 'Stiletto', path: '/stiletto', image: '/images/home/catalogues/stiletto.jpg' },
-    { name: 'Wedges', path: '/wedges', image: '/images/home/catalogues/wedges.jpg' },
-    { name: 'Platform', path: '/platform', image: '/images/home/catalogues/platform.jpg' },
-    { name: 'Kitten', path: '/kitten', image: '/images/home/catalogues/kitten.jpg' }
+    { name: 'Bellis', path: '/bellis', image: '/images/home/catalogues/bellis/bellis.jpg' },
+    { name: 'Stiletto', path: '/stiletto', image: '/images/home/catalogues/stiletto/stiletto.jpg' },
+    { name: 'Wedges', path: '/wedges', image: '/images/home/catalogues/wedges/wedges.jpg' },
+    { name: 'Platform', path: '/platform', image: '/images/home/catalogues/platform/platform.jpg' },
+    { name: 'Kitten', path: '/kitten', image: '/images/home/catalogues/kitten/kitten.jpg' }
   ];
 
   return (
