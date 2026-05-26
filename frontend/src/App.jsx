@@ -43,7 +43,6 @@ export default function App() {
       
       if (token && savedUser) {
         try {
-          // Setting the state safely using your local profile backup
           setUser(JSON.parse(savedUser));
           
           const cartRes = await fetchAPI('/cart');
@@ -298,25 +297,31 @@ function Products({ category, title }) {
 
 function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }) {
   const [isEditing, setIsEditing] = useState(false);
-  const [displayImage, setDisplayImage] = useState(p.image);
+  
+  // Cleanly split incoming image and color arrays from pipe-separated variants
+  const imageUrls = p.image ? p.image.split('|').map(url => url.trim()) : [];
+  const colors = p.variants ? p.variants.map(v => v.color.trim()) : [];
+
+  // Safely index active variant mutations to prevent 404 path mutations
+  const [selectedIndex, setSelectedIndex] = useState(0);
   
   const { wishlist, setWishlist } = useContext(AppContext);
   const inWishlist = wishlist?.some(item => item._id === p._id);
 
-  const [showReviews, setShowReviews] = useState(false);
-  const [reviewRating, setReviewRating] = useState(5);
-  const [reviewComment, setReviewComment] = useState('');
-  const [reviewImage, setReviewImage] = useState('');
-  
-  const [showSizeGuide, setShowSizeGuide] = useState(false);
   const [selectedSize, setSelectedSize] = useState('');
+  const [showSizeGuide, setShowSizeGuide] = useState(false);
 
   const [editForm, setEditForm] = useState({
     name: p.name, price: p.price, image: p.image, category: p.category || 'luxury',
     variantsText: p.variants ? p.variants.map(v => `${v.color}|${v.image}`).join(', ') : ''
   });
 
-  useEffect(() => { setDisplayImage(p.image); }, [p.image]);
+  // Track absolute index boundaries if background state changes items
+  useEffect(() => { 
+    setSelectedIndex(0); 
+  }, [p.image]);
+
+  const currentImageSrc = imageUrls[selectedIndex] || '/images/placeholder.jpg';
 
   const handleAddToCart = async () => {
     if (!user) return navigate('/auth');
@@ -340,21 +345,6 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
     } catch (err) { alert("Error updating wishlist"); }
   };
 
-  const handleSubmitReview = async (e) => {
-    e.preventDefault();
-    if (!user) return navigate('/auth');
-    try {
-      await fetchAPI(`/products/${p._id}/reviews`, {
-        method: 'POST',
-        body: JSON.stringify({ rating: reviewRating, comment: reviewComment, image: reviewImage })
-      });
-      setReviewComment('');
-      setReviewRating(5);
-      setReviewImage(''); 
-      fetchProducts(); 
-    } catch (err) { alert("Failed to post review"); }
-  };
-
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
@@ -371,8 +361,6 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
       fetchProducts();
     } catch (err) { alert("Failed to update"); }
   };
-
-  const avgRating = p.reviews?.length ? (p.reviews.reduce((sum, r) => sum + r.rating, 0) / p.reviews.length).toFixed(1) : 0;
 
   return (
     <div className="group relative">
@@ -406,7 +394,12 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
       ) : (
         <>
           <div className="bg-stone-100 aspect-[4/5] mb-4 overflow-hidden relative">
-            <img src={displayImage} alt={p.name} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" />
+            <img 
+              src={currentImageSrc} 
+              alt={p.name} 
+              className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
+              onError={(e) => { e.target.src = '/images/home/catalogues/kitten/kitten.jpg'; }}
+            />
           </div>
           <div className="flex justify-between items-start">
             <div className="w-full">
@@ -429,12 +422,26 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
               </div>
 
               <div className="flex justify-between items-center mt-3">
-                {p.variants && p.variants.length > 0 ? (
+                {imageUrls.length > 1 ? (
                   <div className="flex gap-2">
-                    <div title="Main Color" onClick={() => setDisplayImage(p.image)} className={`w-5 h-5 rounded-full cursor-pointer transition-all ${displayImage === p.image ? 'border-stone-900 border-2 scale-110' : 'border-stone-300 border hover:border-stone-500'}`} style={{ backgroundImage: `url(${p.image})`, backgroundSize: 'cover' }} ></div>
-                    {p.variants.map((v, idx) => (
-                      <div key={idx} title={v.color} onClick={() => setDisplayImage(v.image)} className={`w-5 h-5 rounded-full shadow-sm cursor-pointer border transition-all ${displayImage === v.image ? 'border-stone-900 border-2 scale-110' : 'border-stone-300 hover:border-stone-500'}`} style={{ backgroundColor: v.color.toLowerCase() }} ></div>
-                    ))}
+                    {imageUrls.map((url, idx) => {
+                      // Dynamically render circle hex codes cleanly based on standard setup
+                      let circleColor = '#ccc';
+                      if (url.includes('black')) circleColor = '#000000';
+                      else if (url.includes('brown')) circleColor = '#8B4513';
+                      else if (url.includes('grey') || url.includes('gray')) circleColor = '#808080';
+                      else if (url.includes('skyblue')) circleColor = '#87CEEB';
+                      else if (url.includes('white')) circleColor = '#FFFFFF';
+
+                      return (
+                        <div 
+                          key={idx} 
+                          onClick={() => setSelectedIndex(idx)} 
+                          className={`w-5 h-5 rounded-full shadow-sm cursor-pointer border transition-all ${selectedIndex === idx ? 'border-stone-900 border-2 scale-110' : 'border-stone-300 hover:border-stone-500'}`} 
+                          style={{ backgroundColor: circleColor }} 
+                        />
+                      );
+                    })}
                   </div>
                 ) : <div />} 
 
@@ -571,7 +578,7 @@ function Wishlist() {
           <div key={idx} className="group relative border border-stone-100 p-4">
              <button onClick={() => handleRemove(item._id)} className="absolute top-2 right-2 z-10 text-stone-400 hover:text-red-500 p-2"><X size={16} /></button>
              <div className="bg-stone-100 aspect-[4/5] mb-4 overflow-hidden">
-                <img src={item.image} alt={item.name} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" />
+                <img src={item.image ? item.image.split('|')[0].trim() : '/images/placeholder.jpg'} alt={item.name} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" />
              </div>
              <h3 className="font-medium text-stone-800">{item.name}</h3>
              <p className="text-stone-500 mb-4 text-sm">Rs {item.price}</p>
@@ -611,26 +618,23 @@ function Cart() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h2 className="text-2xl font-light mb-8 uppercase">Your Shopping Cart</h2>
+      <h2 className="text-2xl font-light mb-8 uppercase tracking-wide">Your Shopping Bag</h2>
       <div className="space-y-4">
         {cart.map((item, idx) => (
-          <div key={idx} className="flex gap-4 border-b pb-4 items-center justify-between">
-            <div className="flex gap-4 items-center">
-              <img src={item.image} alt={item.name} className="w-16 h-16 object-cover bg-stone-100" />
-              <div>
-                <h4 className="font-medium">{item.name}</h4>
-                <p className="text-stone-500 text-sm">Rs {item.price}</p>
-              </div>
+          <div key={idx} className="flex justify-between items-center border-b pb-4">
+            <div>
+              <h3 className="font-medium">{item.name}</h3>
+              <p className="text-stone-500 text-sm">Rs {item.price}</p>
             </div>
-            <button onClick={() => handleRemove(item._id)} className="text-stone-400 hover:text-red-500"><Trash2 size={18}/></button>
+            <button onClick={() => handleRemove(item._id)} className="text-stone-400 hover:text-red-500"><Trash2 size={18} /></button>
           </div>
         ))}
-        <div className="pt-6 flex justify-between items-center font-medium text-lg">
+        <div className="pt-4 flex justify-between font-medium text-lg">
           <span>Total:</span>
           <span>Rs {total}</span>
         </div>
-        <button disabled={isCheckingOut} onClick={handleCheckout} className="w-full bg-stone-900 text-white py-3 uppercase tracking-widest text-xs font-medium hover:bg-stone-800 transition-colors mt-6">
-          {isCheckingOut ? 'Processing...' : 'Complete Purchase'}
+        <button onClick={handleCheckout} disabled={isCheckingOut} className="w-full mt-6 bg-stone-900 text-white py-3 uppercase tracking-widest text-xs font-medium hover:bg-stone-800 disabled:bg-stone-400">
+          {isCheckingOut ? 'Processing...' : 'Proceed to Checkout'}
         </button>
       </div>
     </div>
@@ -638,38 +642,46 @@ function Cart() {
 }
 
 function Admin() {
-  const [newProduct, setNewProduct] = useState({ name: '', price: '', image: '', category: 'luxury' });
+  const [products, setProducts] = useState([]);
+  const [form, setForm] = useState({ name: '', price: '', image: '', category: 'luxury', color: '' });
 
-  const handleAddProduct = async (e) => {
+  useEffect(() => { fetchProducts(); }, []);
+  const fetchProducts = () => { fetchAPI('/products').then(setProducts).catch(console.error); };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await fetchAPI('/products', { method: 'POST', body: JSON.stringify({ ...newProduct, price: Number(newProduct.price) }) });
-      setNewProduct({ name: '', price: '', image: '', category: 'luxury' });
-      alert("Product added successfully!");
-    } catch (err) { alert("Failed to create product"); }
+      // Create empty mock arrays for variant compliance safely on basic posts
+      await fetchAPI('/products', {
+        method: 'POST',
+        body: JSON.stringify({ ...form, price: Number(form.price), variants: [] })
+      });
+      setForm({ name: '', price: '', image: '', category: 'luxury', color: '' });
+      fetchProducts();
+    } catch (err) { alert("Failed to add product"); }
   };
 
   return (
-    <div className="max-w-md mx-auto bg-stone-50 border border-stone-200 p-8 shadow-sm">
-      <h3 className="text-lg font-light uppercase tracking-widest mb-6">Inventory Management</h3>
-      <form onSubmit={handleAddProduct} className="space-y-4">
-        <input type="text" placeholder="Product Name" required value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="w-full border p-3 bg-white text-sm focus:outline-none" />
-        <input type="number" placeholder="Price (INR)" required value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} className="w-full border p-3 bg-white text-sm focus:outline-none" />
-        <input type="text" placeholder="Image URL (e.g. /images/shoes.jpg)" required value={newProduct.image} onChange={e => setNewProduct({...newProduct, image: e.target.value})} className="w-full border p-3 bg-white text-sm focus:outline-none" />
-        <select value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})} className="w-full border p-3 bg-white text-sm focus:outline-none">
-          <option value="luxury">Trending Luxury</option>
-          <option value="bellis">Bellis</option>
-          <option value="stiletto">Stiletto</option>
-          <option value="wedges">Wedges</option>
-          <option value="platform">Platform</option>
-          <option value="kitten">Kitten</option>
-          <option value="summer">Summer Special</option>
-          <option value="casual">Casual Wear</option>
-        </select>
-        <button type="submit" className="w-full bg-stone-900 text-white py-3 uppercase tracking-widest text-xs font-bold hover:bg-stone-800 transition-colors">
-          Publish Product
-        </button>
-      </form>
+    <div className="space-y-12">
+      <div className="bg-white border p-8 max-w-xl mx-auto shadow-sm">
+        <h2 className="text-xl font-light uppercase tracking-widest mb-6 text-center">Add Luxury Product</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input type="text" placeholder="Product Name" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="w-full border p-3 text-sm focus:outline-none focus:border-stone-900" required />
+          <input type="number" placeholder="Price (INR)" value={form.price} onChange={e => setForm({...form, price: e.target.value})} className="w-full border p-3 text-sm focus:outline-none focus:border-stone-900" required />
+          <input type="text" placeholder="Pipe-delimited Paths (e.g. /img1.jpg | /img2.jpg)" value={form.image} onChange={e => setForm({...form, image: e.target.value})} className="w-full border p-3 text-sm focus:outline-none focus:border-stone-900" required />
+          <select value={form.category} onChange={e => setForm({...form, category: e.target.value})} className="w-full border p-3 text-sm focus:outline-none">
+            <option value="luxury">Trending Arrivals</option>
+            <option value="bellis">Bellis Collection</option>
+            <option value="stiletto">Stiletto Heels</option>
+            <option value="wedges">Wedges Collection</option>
+            <option value="platform">Platform Shoes</option>
+            <option value="kitten">Kitten Heels</option>
+            <option value="summer">Summer Special</option>
+            <option value="casual">Casual Wear</option>
+          </select>
+          <button type="submit" className="w-full bg-stone-900 text-white py-3 uppercase tracking-widest text-xs font-medium hover:bg-stone-800">Add Product</button>
+        </form>
+      </div>
     </div>
   );
-}    
+}
