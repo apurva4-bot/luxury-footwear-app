@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-do
 import { ShoppingBag, User as UserIcon, Trash2, Plus, LogOut, Pencil, X, Check, Heart, Star, Menu, Ruler } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const getVisitorId = () => {
   let vid = localStorage.getItem('visitor_id');
   if (!vid) {
@@ -30,13 +31,36 @@ const AppContext = createContext();
 export default function App() {
   const [user, setUser] = useState(null);
   const [cart, setCart] = useState([]);
-  const [wishlist, setWishlist] = useState([]); 
+  const [wishlist, setWishlist] = useState([]);
+
+  // Fetch initial profile and sync lists if token exists
+  useEffect(() => {
+    const initializeUser = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const profile = await fetchAPI('/auth/profile');
+          setUser(profile.user);
+          
+          const cartRes = await fetchAPI('/cart');
+          setCart(cartRes.cart || []);
+          
+          const wishRes = await fetchAPI('/wishlist');
+          setWishlist(wishRes.wishlist || []);
+        } catch (err) {
+          console.error("Session initialization failed", err);
+          logout();
+        }
+      }
+    };
+    initializeUser();
+  }, []);
 
   const logout = () => {
     localStorage.removeItem('token');
     setUser(null);
     setCart([]);
-    setWishlist([]); 
+    setWishlist([]);
   };
 
   return (
@@ -96,7 +120,6 @@ export default function App() {
 }
 
 function Home() {
-  // FIX: These 5 links now point directly to your new "catalogues" folder!
   const categories = [
     { name: 'Bellis', path: '/bellis', image: '/images/home/catalogues/bellis.jpg' },
     { name: 'Stiletto', path: '/stiletto', image: '/images/home/catalogues/stiletto.jpg' },
@@ -107,7 +130,6 @@ function Home() {
 
   return (
     <div className="flex flex-col w-full">
-      
       <section className="w-full bg-stone-100">
         <img src="/images/home/editorial_banner.jpeg" alt="Kitten Heel Collection" className="w-full h-auto object-cover" />
       </section>
@@ -115,7 +137,6 @@ function Home() {
       <section className="py-12 bg-white border-b border-stone-100">
         <div className="container mx-auto px-4 max-w-5xl">
           <h2 className="text-center text-xl font-light uppercase tracking-widest text-stone-900 mb-10">Occasional Luxury</h2>
-          
           <div className="flex justify-start md:justify-center gap-8 overflow-x-auto pb-6 no-scrollbar snap-x">
             {categories.map((cat, i) => (
               <Link key={i} to={cat.path} className="flex flex-col items-center min-w-[80px] snap-center group">
@@ -162,7 +183,6 @@ function SummerPage() {
       <section className="w-full bg-stone-100">
         <img src="/images/season/summer_special.png" alt="Summer Collection" className="w-full h-auto object-cover" />
       </section>
-
       <section className="container mx-auto px-4 py-24 max-w-6xl">
         <Products category="summer" title="Summer Special: Beach Ready" />
       </section>
@@ -176,7 +196,6 @@ function CasualPage() {
       <section className="w-full bg-stone-100">
         <img src="/images/casual/casual_banner.jpg" alt="Casual Wear Collection" className="w-full h-auto object-cover" />
       </section>
-
       <section className="container mx-auto px-4 py-24 max-w-6xl">
         <Products category="casual" title="Casual Wear Collection" />
       </section>
@@ -191,12 +210,8 @@ function Navbar() {
   return (
     <nav className="border-b border-stone-200 bg-white/80 backdrop-blur-md sticky top-0 z-40 relative">
       <div className="w-full px-4 md:px-12 py-5 flex justify-between items-center">
-        
         <div className="flex items-center gap-4">
-          <button 
-            className="lg:hidden text-stone-900" 
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          >
+          <button className="lg:hidden text-stone-900" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
             {isMobileMenuOpen ? <X size={24} strokeWidth={1.5} /> : <Menu size={24} strokeWidth={1.5} />}
           </button>
           <Link to="/" className="text-sm md:text-lg font-light tracking-[0.2em] uppercase text-stone-900 whitespace-nowrap">
@@ -220,7 +235,11 @@ function Navbar() {
             <ShoppingBag size={20} strokeWidth={1.5} />
             {cart.length > 0 && <span className="absolute -top-2 -right-2 bg-stone-800 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">{cart.length}</span>}
           </Link>
-          {user ? <button onClick={logout} className="hover:text-stone-500 hidden sm:block"><LogOut size={20} strokeWidth={1.5} /></button> : <Link to="/auth" className="hover:text-stone-500 hidden sm:block"><UserIcon size={20} strokeWidth={1.5} /></Link>}
+          {user ? (
+            <button onClick={logout} className="hover:text-stone-500 hidden sm:block"><LogOut size={20} strokeWidth={1.5} /></button>
+          ) : (
+            <Link to="/auth" className="hover:text-stone-500 hidden sm:block"><UserIcon size={20} strokeWidth={1.5} /></Link>
+          )}
         </div>
       </div>
 
@@ -251,12 +270,12 @@ function Products({ category, title }) {
   const fetchProducts = () => { fetchAPI('/products').then(setProducts).catch(console.error); };
 
   const handleDelete = async (productId) => {
-    if(!window.confirm("Delete this product?")) return;
+    if (!window.confirm("Delete this product?")) return;
     try {
-        await fetchAPI(`/products/${productId}`, { method: 'DELETE' });
-        fetchProducts();
+      await fetchAPI(`/products/${productId}`, { method: 'DELETE' });
+      fetchProducts();
     } catch (err) { alert("Failed to delete"); }
-  }
+  };
 
   const displayedProducts = products.filter(p => (p.category || 'luxury') === category);
 
@@ -288,7 +307,7 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
   const [selectedSize, setSelectedSize] = useState('');
 
   const [editForm, setEditForm] = useState({
-    name: p.name, price: p.price, image: p.image,
+    name: p.name, price: p.price, image: p.image, category: p.category || 'luxury',
     variantsText: p.variants ? p.variants.map(v => `${v.color}|${v.image}`).join(', ') : ''
   });
 
@@ -296,14 +315,12 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
 
   const handleAddToCart = async () => {
     if (!user) return navigate('/auth');
-    
     if (!selectedSize) {
       alert("Please select your shoe size before adding to cart!");
       return;
     }
-
     try {
-      const res = await fetchAPI('/cart', { method: 'POST', body: JSON.stringify({ action: 'add', productId: p._id }) });
+      const res = await fetchAPI('/cart', { method: 'POST', body: JSON.stringify({ action: 'add', productId: p._id, size: selectedSize }) });
       setCart(res.cart);
       alert(`Added size ${selectedSize} to your cart!`);
     } catch (err) { alert("Error adding to cart"); }
@@ -354,7 +371,6 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
 
   return (
     <div className="group relative">
-      
       {showSizeGuide && <SizeGuideModal onClose={() => setShowSizeGuide(false)} />}
 
       {!isEditing && (
@@ -375,6 +391,7 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
           <input type="text" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} className="w-full border p-2 text-sm" placeholder="Name" required/>
           <input type="number" value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} className="w-full border p-2 text-sm" placeholder="Price" required/>
           <input type="text" value={editForm.image} onChange={e => setEditForm({...editForm, image: e.target.value})} className="w-full border p-2 text-sm" placeholder="Main Image Path" required/>
+          <input type="text" value={editForm.category} onChange={e => setEditForm({...editForm, category: e.target.value})} className="w-full border p-2 text-sm" placeholder="Category (e.g. bellis, stiletto)" required/>
           <input type="text" value={editForm.variantsText} onChange={e => setEditForm({...editForm, variantsText: e.target.value})} className="w-full border p-2 text-sm" placeholder="Color Variants (e.g. green|/images/green.jpg)"/>
           <div className="flex gap-2">
             <button type="submit" className="flex-1 bg-stone-900 text-white py-2 text-xs uppercase"><Check size={14} className="inline mr-1"/>Save</button>
@@ -388,16 +405,11 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
           </div>
           <div className="flex justify-between items-start">
             <div className="w-full">
-              
               <h3 className="text-lg font-medium text-stone-800">{p.name}</h3>
               <p className="text-stone-500 mb-3">Rs {p.price}</p>
               
               <div className="flex items-center gap-2 mb-3">
-                 <select 
-                    value={selectedSize} 
-                    onChange={e => setSelectedSize(e.target.value)}
-                    className="border border-stone-200 text-xs p-2.5 bg-white text-stone-600 focus:outline-none flex-grow"
-                 >
+                 <select value={selectedSize} onChange={e => setSelectedSize(e.target.value)} className="border border-stone-200 text-xs p-2.5 bg-white text-stone-600 focus:outline-none flex-grow">
                     <option value="">Select Size (EU)</option>
                     <option value="36">36</option>
                     <option value="37">37</option>
@@ -414,7 +426,7 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
               <div className="flex justify-between items-center mt-3">
                 {p.variants && p.variants.length > 0 ? (
                   <div className="flex gap-2">
-                    <div title="Main Color" onClick={() => setDisplayImage(p.image)} className={`w-5 h-5 rounded-full cursor-pointer transition-all ${displayImage === p.image ? 'border-stone-900 border-2 scale-110' : 'border-stone-300 border hover:border-stone-500'}`} style={{ backgroundColor: 'transparent', backgroundImage: `url(${p.image})`, backgroundSize: 'cover' }} ></div>
+                    <div title="Main Color" onClick={() => setDisplayImage(p.image)} className={`w-5 h-5 rounded-full cursor-pointer transition-all ${displayImage === p.image ? 'border-stone-900 border-2 scale-110' : 'border-stone-300 border hover:border-stone-500'}`} style={{ backgroundImage: `url(${p.image})`, backgroundSize: 'cover' }} ></div>
                     {p.variants.map((v, idx) => (
                       <div key={idx} title={v.color} onClick={() => setDisplayImage(v.image)} className={`w-5 h-5 rounded-full shadow-sm cursor-pointer border transition-all ${displayImage === v.image ? 'border-stone-900 border-2 scale-110' : 'border-stone-300 hover:border-stone-500'}`} style={{ backgroundColor: v.color.toLowerCase() }} ></div>
                     ))}
@@ -461,9 +473,7 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
                           <option value="1">1 Star - Terrible</option>
                         </select>
                         <textarea value={reviewComment} onChange={e=>setReviewComment(e.target.value)} placeholder="Write your thoughts..." required className="w-full border border-stone-200 p-2 text-xs bg-white focus:outline-none focus:border-stone-900" rows="2"></textarea>
-                        
                         <input type="text" value={reviewImage} onChange={e=>setReviewImage(e.target.value)} placeholder="Add a Photo URL (optional)" className="w-full border border-stone-200 p-2 text-xs bg-white focus:outline-none focus:border-stone-900" />
-                        
                         <button type="submit" className="w-full bg-stone-900 text-white py-2 text-[10px] uppercase tracking-widest hover:bg-stone-800 transition-colors">Post Review</button>
                       </form>
                     ) : (
@@ -472,7 +482,6 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
                   </div>
                 )}
               </div>
-
             </div>
           </div>
         </>
@@ -527,7 +536,7 @@ function Wishlist() {
 
   const handleAddToCart = async (p) => {
     try {
-      const res = await fetchAPI('/cart', { method: 'POST', body: JSON.stringify({ action: 'add', productId: p._id }) });
+      const res = await fetchAPI('/cart', { method: 'POST', body: JSON.stringify({ action: 'add', productId: p._id, size: '38' }) });
       setCart(res.cart);
       alert("Added to cart!");
     } catch (err) { alert("Error adding to cart"); }
@@ -571,7 +580,7 @@ function Cart() {
     setIsCheckingOut(true);
     try {
       const res = await fetchAPI('/checkout', { method: 'POST' });
-      alert(res.message);
+      alert(res.message || "Checkout successful!");
       setCart([]); 
     } catch (err) { alert("Error during checkout."); }
     setIsCheckingOut(false);
@@ -579,6 +588,7 @@ function Cart() {
 
   if (!user) return <div className="text-center py-20">Please log in to view cart.</div>;
   if (cart.length === 0) return <div className="text-center py-20 text-stone-500">Your cart is empty.</div>;
+  
   const total = cart.reduce((sum, item) => sum + item.price, 0);
 
   return (
@@ -589,108 +599,127 @@ function Cart() {
           <div key={idx} className="flex justify-between items-center border-b border-stone-200 pb-4">
             <div className="flex gap-4 items-center">
               <img src={item.image} alt={item.name} className="w-16 h-20 object-cover bg-stone-100" />
-              <div><h4 className="font-medium">{item.name}</h4><p className="text-stone-500">Rs {item.price}</p></div>
+              <div>
+                <h4 className="font-medium">{item.name}</h4>
+                <p className="text-stone-500 text-xs">Size: {item.size || 'N/A'}</p>
+                <p className="text-stone-500">Rs {item.price}</p>
+              </div>
             </div>
             <button onClick={() => handleRemove(item._id)} className="text-stone-400 hover:text-red-500"><Trash2 size={18} /></button>
           </div>
         ))}
       </div>
-      <div className="mt-8 pt-4 flex justify-between items-center">
-        <span className="text-xl font-medium">Total: Rs {total}</span>
-        <button onClick={handleCheckout} disabled={isCheckingOut} className="bg-stone-900 text-white px-8 py-3 uppercase tracking-widest text-sm hover:bg-stone-800 transition-colors disabled:opacity-50">
-          {isCheckingOut ? 'Processing...' : 'Checkout'}
-        </button>
+      <div className="mt-8 pt-4 flex justify-between items-center border-t border-stone-200">
+        <span className="text-xl font-medium">Total:</span>
+        <span className="text-xl font-semibold">Rs {total}</span>
       </div>
+      <button onClick={handleCheckout} disabled={isCheckingOut} className="w-full mt-6 bg-stone-900 text-white py-3 uppercase tracking-widest text-sm hover:bg-stone-800 transition-colors disabled:bg-stone-400">
+        {isCheckingOut ? 'Processing...' : 'Proceed to Checkout'}
+      </button>
     </div>
   );
 }
 
 function Auth() {
-  const [isLogin, setIsLogin] = useState(true);
-  const [formData, setFormData] = useState({ username: '', password: '' });
   const { setUser, setCart, setWishlist } = useContext(AppContext);
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const navigate = useNavigate();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const endpoint = isLogin ? '/auth/login' : '/auth/register';
+    const payload = isLogin ? { email, password } : { name, email, password };
+    
     try {
-      const res = await fetchAPI('/auth', { method: 'POST', body: JSON.stringify({ action: isLogin ? 'login' : 'signup', ...formData }) });
-      localStorage.setItem('token', res.token);
-      setUser({ username: res.user.username, role: res.user.role });
-      setCart(res.user.cart || []);
-      setWishlist(res.user.wishlist || []); 
+      const data = await fetchAPI(endpoint, { method: 'POST', body: JSON.stringify(payload) });
+      localStorage.setItem('token', data.token);
+      setUser(data.user);
+      
+      // Sync user data lists post login
+      const cartRes = await fetchAPI('/cart').catch(() => ({ cart: [] }));
+      setCart(cartRes.cart || []);
+      const wishRes = await fetchAPI('/wishlist').catch(() => ({ wishlist: [] }));
+      setWishlist(wishRes.wishlist || []);
+      
       navigate('/');
-    } catch (err) { alert("Authentication failed"); }
+    } catch (err) {
+      alert(err.message || "Authentication failed");
+    }
   };
+
   return (
-    <div className="max-w-md mx-auto py-20">
-      <h2 className="text-3xl font-light mb-8 text-center uppercase tracking-widest">{isLogin ? 'Sign In' : 'Create Account'}</h2>
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <input type="text" placeholder="Username" required className="w-full bg-transparent border-b border-stone-300 py-3 px-2 focus:outline-none focus:border-stone-900 transition-colors" onChange={e => setFormData({...formData, username: e.target.value})} />
-        <input type="password" placeholder="Password" required className="w-full bg-transparent border-b border-stone-300 py-3 px-2 focus:outline-none focus:border-stone-900 transition-colors" onChange={e => setFormData({...formData, password: e.target.value})} />
-        <button className="w-full bg-stone-900 text-white py-4 uppercase tracking-widest text-sm hover:bg-stone-800 transition-colors">{isLogin ? 'Enter' : 'Register'}</button>
+    <div className="max-w-md mx-auto border border-stone-200 p-8 bg-white my-12">
+      <h2 className="text-xl font-light uppercase tracking-widest text-center mb-8">{isLogin ? 'Login' : 'Register'}</h2>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {!isLogin && (
+          <div>
+            <label className="text-xs uppercase tracking-wider text-stone-500 block mb-1">Name</label>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} required className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" />
+          </div>
+        )}
+        <div>
+          <label className="text-xs uppercase tracking-wider text-stone-500 block mb-1">Email</label>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} required className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" />
+        </div>
+        <div>
+          <label className="text-xs uppercase tracking-wider text-stone-500 block mb-1">Password</label>
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)} required className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" />
+        </div>
+        <button type="submit" className="w-full bg-stone-900 text-white py-3 uppercase tracking-widest text-xs hover:bg-stone-800 transition-colors pt-4">
+          {isLogin ? 'Sign In' : 'Create Account'}
+        </button>
       </form>
-      <button type="button" onClick={() => setIsLogin(!isLogin)} className="w-full mt-6 text-sm text-stone-500 hover:text-stone-900">{isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}</button>
+      <button onClick={() => setIsLogin(!isLogin)} className="w-full text-center text-xs text-stone-500 hover:text-stone-900 mt-4 underline">
+        {isLogin ? "Don't have an account? Register" : 'Already have an account? Login'}
+      </button>
     </div>
   );
 }
 
 function Admin() {
-  const [data, setData] = useState({ users: [], logs: [], productCount: 0 });
-  const [newProduct, setNewProduct] = useState({ name: '', price: '', image: '', category: 'luxury', variantsText: '' });
-
-  useEffect(() => { fetchAPI('/admin').then(setData).catch(console.error); }, []);
+  const { user } = useContext(AppContext);
+  const [name, setName] = useState('');
+  const [price, setPrice] = useState('');
+  const [image, setImage] = useState('');
+  const [category, setCategory] = useState('luxury');
 
   const handleAddProduct = async (e) => {
     e.preventDefault();
     try {
-      const variantsArray = newProduct.variantsText ? newProduct.variantsText.split(',').map(v => {
-          const parts = v.split('|');
-          return { color: parts[0]?.trim(), image: parts[1]?.trim() };
-      }).filter(v => v.color && v.image) : [];
-
-      await fetchAPI('/products', { method: 'POST', body: JSON.stringify({ ...newProduct, price: Number(newProduct.price), variants: variantsArray }) });
-      alert("Product added!");
-      setNewProduct({ name: '', price: '', image: '', category: 'luxury', variantsText: '' });
-      fetchAPI('/admin').then(setData);
+      await fetchAPI('/products', {
+        method: 'POST',
+        body: JSON.stringify({ name, price: Number(price), image, category, variants: [] })
+      });
+      alert("Product added safely!");
+      setName(''); setPrice(''); setImage('');
     } catch (err) { alert("Failed to add product"); }
   };
 
-  return (
-    <div className="space-y-12">
-      <h2 className="text-2xl font-light uppercase tracking-wide border-b pb-4">Admin Dashboard</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-        <div>
-          <h3 className="text-lg font-medium mb-6">Add New Product</h3>
-          <form onSubmit={handleAddProduct} className="space-y-4">
-            <input type="text" placeholder="Name" required className="w-full border border-stone-200 p-3 bg-white" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
-            <input type="number" placeholder="Price" required className="w-full border border-stone-200 p-3 bg-white" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} />
-            <input type="text" placeholder="Main Image URL (/images/home/brown.jpg)" required className="w-full border border-stone-200 p-3 bg-white" value={newProduct.image} onChange={e => setNewProduct({...newProduct, image: e.target.value})} />
-            
-            <select className="w-full border border-stone-200 p-3 bg-white text-stone-600" value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})}>
-              <option value="luxury" className="font-bold">-- Main Pages --</option>
-              <option value="luxury">Main Collection (Home)</option>
-              <option value="summer">Season Special (Summer)</option>
-              <option value="casual">Casual Wear</option>
-              
-              <option value="bellis" className="font-bold border-t mt-2">-- Occasional Luxury --</option>
-              <option value="bellis">Bellis</option>
-              <option value="stiletto">Stiletto</option>
-              <option value="wedges">Wedges</option>
-              <option value="platform">Platform</option>
-              <option value="kitten">Kitten</option>
-            </select>
+  if (user?.role !== 'admin') return <div className="text-center py-20 text-red-600">Access Denied.</div>;
 
-            <input type="text" placeholder="Color Variants (e.g. green|/images/home/green.jpg)" className="w-full border border-stone-200 p-3 bg-white" value={newProduct.variantsText} onChange={e => setNewProduct({...newProduct, variantsText: e.target.value})} />
-            <button className="bg-stone-900 text-white px-6 py-3 uppercase text-sm w-full hover:bg-stone-800 transition-colors">Add Product</button>
-          </form>
-        </div>
-        <div className="space-y-8">
-          <div className="bg-stone-100 p-6 rounded-sm">
-            <p className="text-sm text-stone-500 uppercase tracking-widest mb-2">Total Products Cataloged</p>
-            <p className="text-4xl font-light">{data.productCount}</p>
-          </div>
-        </div>
-      </div>
+  return (
+    <div className="max-w-xl mx-auto border border-stone-200 p-8 bg-white">
+      <h2 className="text-2xl font-light uppercase tracking-widest text-center mb-8">Admin Dashboard</h2>
+      <h3 className="text-sm font-medium uppercase tracking-wider mb-4 text-stone-600">Create New Design Asset</h3>
+      <form onSubmit={handleAddProduct} className="space-y-4">
+        <input type="text" placeholder="Product Title" value={name} onChange={e => setName(e.target.value)} required className="w-full border p-3 text-sm focus:outline-none" />
+        <input type="number" placeholder="Price (Rs)" value={price} onChange={e => setPrice(e.target.value)} required className="w-full border p-3 text-sm focus:outline-none" />
+        <input type="text" placeholder="Image File Path (e.g. /images/...)" value={image} onChange={e => setImage(e.target.value)} required className="w-full border p-3 text-sm focus:outline-none" />
+        <select value={category} onChange={e => setCategory(e.target.value)} className="w-full border p-3 text-sm bg-white focus:outline-none">
+          <option value="luxury">Trending Arrivals (Luxury)</option>
+          <option value="bellis">Bellis Collection</option>
+          <option value="stiletto">Stiletto Heels</option>
+          <option value="wedges">Wedges Collection</option>
+          <option value="platform">Platform Shoes</option>
+          <option value="kitten">Kitten Heels</option>
+          <option value="summer">Summer Special</option>
+          <option value="casual">Casual Wear</option>
+        </select>
+        <button type="submit" className="w-full bg-stone-900 text-white py-3 uppercase tracking-widest text-xs font-bold hover:bg-stone-800">Add Product Catalog Item</button>
+      </form>
     </div>
   );
 }
