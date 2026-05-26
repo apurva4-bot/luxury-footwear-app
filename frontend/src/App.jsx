@@ -2,7 +2,7 @@ import React, { useState, useEffect, createContext, useContext } from 'react';
 import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { ShoppingBag, User as UserIcon, Trash2, Plus, LogOut, Pencil, X, Check, Heart, Star, Menu, Ruler } from 'lucide-react';
 
-// FIXED: Prevents double-appending paths if your environment variable already has /api
+// FIXED: Base backend server domain
 const API_URL = 'https://luxury-footwear-app.onrender.com';
 
 const getVisitorId = () => {
@@ -14,6 +14,7 @@ const getVisitorId = () => {
   return vid;
 };
 
+// FIXED: Automatically adds the /api route prefix so it talks to your Render server routes perfectly
 const fetchAPI = async (endpoint, options = {}) => {
   const token = localStorage.getItem('token');
   const headers = {
@@ -22,7 +23,9 @@ const fetchAPI = async (endpoint, options = {}) => {
     ...(token && { 'Authorization': `Bearer ${token}` }),
     ...options.headers
   };
-  const response = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
+  
+  // Appends /api securely to hit your back-end controller setup
+  const response = await fetch(`${API_URL}/api${endpoint}`, { ...options, headers });
   if (!response.ok) throw new Error(await response.text());
   return response.json();
 };
@@ -34,7 +37,6 @@ export default function App() {
   const [cart, setCart] = useState([]);
   const [wishlist, setWishlist] = useState([]);
 
-  // Fetch initial profile and sync lists if token exists
   useEffect(() => {
     const initializeUser = async () => {
       const token = localStorage.getItem('token');
@@ -595,29 +597,25 @@ function Cart() {
   return (
     <div className="max-w-2xl mx-auto">
       <h2 className="text-2xl font-light mb-8 uppercase tracking-wide">Your Shopping Cart</h2>
-      <div className="space-y-6">
+      <div className="space-y-4">
         {cart.map((item, idx) => (
-          <div key={idx} className="flex items-center justify-between border-b border-stone-100 pb-6">
-            <div className="flex items-center gap-6">
-              <div className="w-16 h-20 bg-stone-100 overflow-hidden">
-                <img src={item.image} alt={item.name} className="object-cover w-full h-full" />
-              </div>
+          <div key={idx} className="flex justify-between items-center border-b pb-4">
+            <div className="flex items-center gap-4">
+              <img src={item.image} alt={item.name} className="w-16 h-20 object-cover" />
               <div>
-                <h3 className="font-medium text-stone-800">{item.name}</h3>
-                <p className="text-stone-500 text-sm">Size: {item.size || '38'}</p>
-                <p className="text-stone-800 text-sm mt-1">Rs {item.price}</p>
+                <h3 className="font-medium">{item.name}</h3>
+                <p className="text-stone-500 text-xs">Size: {item.size || '38'}</p>
+                <p className="text-stone-500 text-sm">Rs {item.price}</p>
               </div>
             </div>
-            <button onClick={() => handleRemove(item.productId)} className="text-stone-400 hover:text-stone-900 p-2">
-              <Trash2 size={18} strokeWidth={1.5} />
-            </button>
+            <button onClick={() => handleRemove(item._id)} className="text-stone-400 hover:text-stone-900"><Trash2 size={18} /></button>
           </div>
         ))}
-        <div className="pt-6 flex justify-between items-baseline">
-          <span className="text-stone-500 uppercase tracking-wider text-sm">Subtotal</span>
-          <span className="text-xl font-medium">Rs {total}</span>
+        <div className="pt-6 border-t flex justify-between items-center font-medium text-lg">
+          <span>Total:</span>
+          <span>Rs {total}</span>
         </div>
-        <button onClick={handleCheckout} disabled={isCheckingOut} className="w-full bg-stone-900 text-white py-4 uppercase tracking-widest text-sm font-medium hover:bg-stone-800 transition-colors mt-8">
+        <button onClick={handleCheckout} disabled={isCheckingOut} className="w-full bg-stone-900 text-white py-4 uppercase tracking-widest text-sm mt-6 hover:bg-stone-800 disabled:bg-stone-400">
           {isCheckingOut ? 'Processing...' : 'Proceed to Checkout'}
         </button>
       </div>
@@ -626,44 +624,61 @@ function Cart() {
 }
 
 function Admin() {
-  return (
-    <div className="text-center py-20">
-      <h2 className="text-2xl font-light uppercase tracking-widest mb-4">Admin Dashboard</h2>
-      <p className="text-stone-500">Product inventory management console access active.</p>
-    </div>
-  );
+  const [form, setForm] = useState({ name: '', price: '', image: '', category: 'luxury' });
+  try {
+    return (
+      <div className="max-w-md mx-auto bg-stone-50 p-8 border">
+        <h2 className="text-xl font-light uppercase tracking-widest mb-6">Add Luxury Product</h2>
+        <form onSubmit={async (e) => {
+          e.preventDefault();
+          await fetchAPI('/products', { method: 'POST', body: JSON.stringify({ ...form, price: Number(form.price) }) });
+          setForm({ name: '', price: '', image: '', category: 'luxury' });
+          alert("Product Added!");
+        }} className="space-y-4">
+          <input type="text" placeholder="Product Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full p-3 border text-sm" required />
+          <input type="number" placeholder="Price (Rs)" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} className="w-full p-3 border text-sm" required />
+          <input type="text" placeholder="Image Path (e.g. /images/shoes.jpg)" value={form.image} onChange={e => setForm({ ...form, image: e.target.value })} className="w-full p-3 border text-sm" required />
+          <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="w-full p-3 border text-sm bg-white">
+            <option value="bellis">Bellis</option>
+            <option value="stiletto">Stiletto</option>
+            <option value="wedges">Wedges</option>
+            <option value="platform">Platform</option>
+            <option value="kitten">Kitten</option>
+          </select>
+          <button type="submit" className="w-full bg-stone-900 text-white py-3 uppercase tracking-widest text-xs">Upload Product</button>
+        </form>
+      </div>
+    );
+  } catch (err) { return <div>Admin loading error</div>; }
 }
 
-// ADDED: Missing Auth component interface logic to stop your build from crashing
+// FIXED: Embedded the Auth Component inside App.jsx so it is defined and stops throwing errors!
 function Auth() {
+  const [isLogin, setIsLogin] = useState(true);
+  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
   const { setUser, setCart, setWishlist } = useContext(AppContext);
   const navigate = useNavigate();
-  const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const endpoint = isLogin ? '/auth/login' : '/auth/register';
-    const payload = isLogin ? { email, password } : { name, email, password };
-    
     try {
       const data = await fetchAPI(endpoint, {
         method: 'POST',
-        body: JSON.stringify(payload)
+        body: JSON.stringify(formData)
       });
+      
       if (data.token) {
         localStorage.setItem('token', data.token);
         setUser(data.user);
         
-        // Fetch fresh cart and wishlist records for the authenticated session
+        // Fetch real-time cart/wishlist sync right after authenticating
         const cartRes = await fetchAPI('/cart').catch(() => ({ cart: [] }));
         setCart(cartRes.cart || []);
         const wishRes = await fetchAPI('/wishlist').catch(() => ({ wishlist: [] }));
         setWishlist(wishRes.wishlist || []);
-
-        alert("Success!");
+        
+        alert(isLogin ? "Logged in successfully!" : "Registered successfully!");
         navigate('/');
       }
     } catch (err) {
@@ -672,23 +687,34 @@ function Auth() {
   };
 
   return (
-    <div className="max-w-md mx-auto my-12 p-6 border border-stone-200 bg-white shadow-sm">
-      <h2 className="text-xl font-light uppercase tracking-widest text-center mb-6">
-        {isLogin ? 'Sign In' : 'Create Account'}
+    <div className="max-w-md mx-auto bg-white p-8 border border-stone-200 shadow-sm mt-12">
+      <h2 className="text-2xl font-light uppercase tracking-widest text-center mb-8">
+        {isLogin ? 'Login' : 'Create Account'}
       </h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         {!isLogin && (
-          <input type="text" placeholder="Full Name" value={name} onChange={e => setName(e.target.value)} required className="w-full border p-3 text-sm focus:outline-none focus:border-stone-900" />
+          <div>
+            <label className="block text-xs uppercase tracking-wider text-stone-500 mb-2">Name</label>
+            <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full border p-3 text-sm focus:outline-none focus:border-stone-900" required />
+          </div>
         )}
-        <input type="email" placeholder="Email Address" value={email} onChange={e => setEmail(e.target.value)} required className="w-full border p-3 text-sm focus:outline-none focus:border-stone-900" />
-        <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required className="w-full border p-3 text-sm focus:outline-none focus:border-stone-900" />
-        <button type="submit" className="w-full bg-stone-900 text-white py-3 uppercase tracking-widest text-xs font-medium hover:bg-stone-800 transition-colors">
-          {isLogin ? 'Log In' : 'Register'}
+        <div>
+          <label className="block text-xs uppercase tracking-wider text-stone-500 mb-2">Email Address</label>
+          <input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full border p-3 text-sm focus:outline-none focus:border-stone-900" required />
+        </div>
+        <div>
+          <label className="block text-xs uppercase tracking-wider text-stone-500 mb-2">Password</label>
+          <input type="password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} className="w-full border p-3 text-sm focus:outline-none focus:border-stone-900" required />
+        </div>
+        <button type="submit" className="w-full bg-stone-900 text-white py-3.5 uppercase tracking-widest text-xs font-medium hover:bg-stone-800 transition-colors mt-4">
+          {isLogin ? 'Sign In' : 'Register'}
         </button>
       </form>
-      <p className="text-xs text-center text-stone-500 mt-4 cursor-pointer hover:underline" onClick={() => setIsLogin(!isLogin)}>
-        {isLogin ? "Don't have an account? Register here" : "Already have an account? Sign In"}
-      </p>
+      <div className="text-center mt-6">
+        <button onClick={() => setIsLogin(!isLogin)} className="text-xs text-stone-400 hover:text-stone-900 transition-colors underline underline-offset-4">
+          {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+        </button>
+      </div>
     </div>
   );
-}  // force redeploy break cache 123
+}
