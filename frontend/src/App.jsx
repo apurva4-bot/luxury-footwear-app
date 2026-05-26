@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-do
 import { ShoppingBag, User as UserIcon, Trash2, Plus, LogOut, Pencil, X, Check, Heart, Star, Menu, Ruler } from 'lucide-react';
 
 // FIXED: Prevents double-appending paths if your environment variable already has /api
-const API_URL = 'https://luxury-footwear-app.onrender.com/api';
+const API_URL = 'https://luxury-footwear-app.onrender.com';
 
 const getVisitorId = () => {
   let vid = localStorage.getItem('visitor_id');
