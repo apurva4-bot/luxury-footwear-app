@@ -10,7 +10,6 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-// --- FIX: CLEAN & STABLE CORS ORIGIN FUNCTION ---
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin || origin.endsWith('.vercel.app') || origin.includes('localhost')) {
@@ -32,7 +31,7 @@ const transporter = nodemailer.createTransport({
 // --- SCHEMAS ---
 const UserSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
-  phone: { type: String, unique: true, sparse: true }, // Added sparse to allow empty phone numbers without duplicate key errors
+  phone: { type: String, required: true, unique: true }, // Changed to required to ensure true phone logins work
   password: { type: String, required: true },
   role: { type: String, default: 'user' },
   cart: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
@@ -52,7 +51,6 @@ const VisitorLogSchema = new mongoose.Schema({
 });
 const VisitorLog = mongoose.model('VisitorLog', VisitorLogSchema);
 
-// --- VISITOR TRACKING ---
 app.use((req, res, next) => {
   const visitorId = req.headers['x-visitor-id'] || 'anonymous';
   const ip = req.ip || req.connection.remoteAddress;
@@ -60,7 +58,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// --- AUTH MIDDLEWARE ---
 const requireAuth = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: "Unauthorized" });
@@ -72,17 +69,23 @@ const requireAuth = (req, res, next) => {
   } catch (err) { res.status(401).json({ error: "Invalid token" }); }
 };
 
-// --- ROUTES ---
+// --- AUTH ROUTES ---
 app.post('/api/auth/signup', async (req, res) => {
   const { username, phone, password, role } = req.body;
+  
+  if (!username || !phone || !password) {
+    return res.status(400).json({ error: "All fields (Username, Phone, Password) are required." });
+  }
+
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await User.create({ 
+      username: username.trim(), 
+      phone: phone.trim(), 
+      password: hashedPassword, 
+      role: role || 'user' 
+    });
     
-    // Create payload containing both user handle and optional phone records
-    const userData = { username, password: hashedPassword, role: role || 'user' };
-    if (phone && phone.trim() !== "") userData.phone = phone.trim();
-
-    const user = await User.create(userData);
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET);
     res.json({ token, user: { username: user.username, phone: user.phone, role: user.role, cart: [], wishlist: [] } });
   } catch (error) { 
@@ -94,19 +97,25 @@ app.post('/api/auth/signup', async (req, res) => {
 });
 
 app.post('/api/auth/login', async (req, res) => {
-  const { loginIdentifier, password } = req.body; // loginIdentifier can be username OR phone number
+  const { loginIdentifier, password } = req.body; // loginIdentifier accepts either string
+  
+  if (!loginIdentifier || !password) {
+    return res.status(400).json({ error: "Login identifier and password are required." });
+  }
+
   try {
-    // Search for account records by checking both properties dynamically
+    // Dynamically search database fields using MongoDB OR operator
     const user = await User.findOne({
       $or: [
-        { username: loginIdentifier },
-        { phone: loginIdentifier }
+        { username: loginIdentifier.trim() },
+        { phone: loginIdentifier.trim() }
       ]
     }).populate('cart').populate('wishlist');
 
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
+    
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET);
     res.json({ token, user: { username: user.username, phone: user.phone, role: user.role, cart: user.cart, wishlist: user.wishlist } });
   } catch (error) { 
@@ -114,6 +123,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// --- REST OF THE BACKEND API ENDPOINTS ---
 app.get('/api/products', async (req, res) => {
   const products = await Product.find();
   res.json(products);
@@ -139,7 +149,6 @@ app.delete('/api/products/:id', requireAuth, async (req, res) => {
   res.json({ success: true });
 });
 
-// --- FIXED CART ENDPOINTS ---
 app.get('/api/cart', requireAuth, async (req, res) => {
   try {
     const user = await User.findById(req.userId).populate('cart');
@@ -162,7 +171,6 @@ app.post('/api/cart', requireAuth, async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// --- FIXED WISHLIST ENDPOINTS ---
 app.get('/api/wishlist', requireAuth, async (req, res) => {
   try {
     const user = await User.findById(req.userId).populate('wishlist');
@@ -198,17 +206,15 @@ app.post('/api/checkout', requireAuth, async (req, res) => {
       from: process.env.EMAIL_USER,
       to: process.env.EMAIL_USER,
       subject: `🚨 NEW ORDER ALERT: Rs ${total} from ${user.username}`,
-      text: `Woohoo! You have a new order on Ethereal.\n\nCustomer: ${user.username}\nItems Purchased: ${itemNames}\nTotal Value: Rs ${total}\n\nKeep up the great work!`
+      text: `Customer: ${user.username}\nPhone: ${user.phone || 'N/A'}\nItems Purchased: ${itemNames}\nTotal Value: Rs ${total}`
     };
 
     await transporter.sendMail(mailOptions);
-
     user.cart = [];
     await user.save();
-    res.json({ success: true, message: "Order placed! The admin has been notified." });
+    res.json({ success: true, message: "Order placed!" });
   } catch (error) { 
-    console.error(error);
-    res.status(500).json({ error: "Failed to process checkout and send email." }); 
+    res.status(500).json({ error: "Failed to process checkout" }); 
   }
 });
 
@@ -221,6 +227,4 @@ app.get('/api/admin', requireAuth, async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on port ${PORT}`);
-});
+app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
