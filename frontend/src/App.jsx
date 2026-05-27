@@ -1,6 +1,6 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
-import { ShoppingBag, User as UserIcon, Trash2, Plus, LogOut, Pencil, X, Check, Heart, Star, Menu, Ruler } from 'lucide-react';
+import { ShoppingBag, User as UserIcon, Trash2, Plus, LogOut, Pencil, X, Check, Heart, Star, Menu, Ruler, Eye, EyeOff } from 'lucide-react';
 
 // Fixed backend server domain
 const API_URL = 'https://luxury-footwear-app.onrender.com';
@@ -14,7 +14,6 @@ const getVisitorId = () => {
   return vid;
 };
 
-// Automatically adds the /api route prefix to talk to your Render server routes perfectly
 const fetchAPI = async (endpoint, options = {}) => {
   const token = localStorage.getItem('token');
   const headers = {
@@ -299,7 +298,6 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
   const [isEditing, setIsEditing] = useState(false);
   
   const imageUrls = p.image ? p.image.split('|').map(url => url.trim()) : [];
-  const colors = p.variants ? p.variants.map(v => v.color.trim()) : [];
   const [selectedIndex, setSelectedIndex] = useState(0);
   
   const { wishlist, setWishlist } = useContext(AppContext);
@@ -485,8 +483,114 @@ function SizeGuideModal({ onClose }) {
   );
 }
 
-// Placeholder sub-components required by routing hierarchy to compile layout error-free
-function Auth() { return <div className="text-center py-12 font-light uppercase tracking-wider text-stone-600">Authentication Portal Embedded</div>; }
+// --- FULLY IMPLEMENTED AUTH PORTAL CONTEXT CONTROLLERS WITH PASSWORD EYE VISIBILITY EYE TOGGLE & PHONE FIELD ---
+function Auth() {
+  const [isLogin, setIsLogin] = useState(true);
+  const [username, setUsername] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const { setUser, setCart, setWishlist } = useContext(AppContext);
+  const navigate = useNavigate();
+
+  const handleAuthSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const endpoint = isLogin ? '/auth/login' : '/auth/signup';
+      const payload = isLogin 
+        ? { loginIdentifier: username, password } 
+        : { username, phone, password };
+
+      const res = await fetchAPI(endpoint, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+
+      localStorage.setItem('token', res.token);
+      localStorage.setItem('user_details', JSON.stringify(res.user));
+      setUser(res.user);
+      setCart(res.user.cart || []);
+      setWishlist(res.user.wishlist || []);
+      
+      alert(isLogin ? "Logged in successfully!" : "Account created successfully!");
+      navigate('/');
+    } catch (err) {
+      const errorMsg = err.message || "Authentication failed";
+      alert(errorMsg.includes("{") ? JSON.parse(errorMsg).error : errorMsg);
+    }
+  };
+
+  return (
+    <div className="bg-white border border-stone-200 p-8 shadow-sm">
+      <h2 className="text-xl font-light uppercase tracking-widest text-center mb-8 text-stone-900">
+        {isLogin ? "Login to Account" : "Create Account"}
+      </h2>
+      <form onSubmit={handleAuthSubmit} className="space-y-5">
+        <div>
+          <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">
+            {isLogin ? "Username or Phone Number" : "Username"}
+          </label>
+          <input 
+            type="text" 
+            value={username} 
+            onChange={e => setUsername(e.target.value)} 
+            className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" 
+            placeholder={isLogin ? "Enter username or phone" : "Choose username"} 
+            required
+          />
+        </div>
+
+        {!isLogin && (
+          <div>
+            <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Phone Number (Optional)</label>
+            <input 
+              type="tel" 
+              value={phone} 
+              onChange={e => setPhone(e.target.value)} 
+              className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" 
+              placeholder="Enter phone number" 
+            />
+          </div>
+        )}
+
+        <div>
+          <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Password</label>
+          <div className="relative">
+            <input 
+              type={showPassword ? "text" : "password"} 
+              value={password} 
+              onChange={e => setPassword(e.target.value)} 
+              className="w-full border border-stone-200 p-3 pr-10 text-sm focus:outline-none focus:border-stone-900" 
+              placeholder="Enter password" 
+              required
+            />
+            <button 
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-900 transition-colors"
+            >
+              {showPassword ? <EyeOff size={18} strokeWidth={1.5} /> : <Eye size={18} strokeWidth={1.5} />}
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" className="w-full bg-stone-900 text-white py-3.5 text-xs uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors">
+          {isLogin ? "Sign In" : "Register"}
+        </button>
+      </form>
+
+      <div className="mt-6 text-center">
+        <button 
+          onClick={() => { setIsLogin(!isLogin); setUsername(''); setPhone(''); setPassword(''); }} 
+          className="text-xs text-stone-500 hover:text-stone-900 underline underline-offset-4 tracking-wide"
+        >
+          {isLogin ? "Don't have an account? Register here" : "Already have an account? Login here"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Cart() { return <div className="text-center py-12 font-light uppercase tracking-wider text-stone-600">Shopping Cart Interface Loaded</div>; }
 function Wishlist() { return <div className="text-center py-12 font-light uppercase tracking-wider text-stone-600">Saved Wishlist Manifest Loaded</div>; }
 function Admin() { return <div className="text-center py-12 font-light uppercase tracking-wider text-stone-600">Secure Management Core Interface</div>; }
