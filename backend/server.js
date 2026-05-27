@@ -32,6 +32,7 @@ const transporter = nodemailer.createTransport({
 // --- SCHEMAS ---
 const UserSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
+  phone: { type: String, unique: true, sparse: true }, // Added sparse to allow empty phone numbers without duplicate key errors
   password: { type: String, required: true },
   role: { type: String, default: 'user' },
   cart: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
@@ -73,26 +74,41 @@ const requireAuth = (req, res, next) => {
 
 // --- ROUTES ---
 app.post('/api/auth/signup', async (req, res) => {
-  const { username, password, role } = req.body;
+  const { username, phone, password, role } = req.body;
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await User.create({ username, password: hashedPassword, role: role || 'user' });
+    
+    // Create payload containing both user handle and optional phone records
+    const userData = { username, password: hashedPassword, role: role || 'user' };
+    if (phone && phone.trim() !== "") userData.phone = phone.trim();
+
+    const user = await User.create(userData);
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET);
-    res.json({ token, user: { username: user.username, role: user.role, cart: [], wishlist: [] } });
+    res.json({ token, user: { username: user.username, phone: user.phone, role: user.role, cart: [], wishlist: [] } });
   } catch (error) { 
+    if (error.code === 11000) {
+      return res.status(400).json({ error: "Username or Phone number already exists." });
+    }
     res.status(500).json({ error: error.message }); 
   }
 });
 
 app.post('/api/auth/login', async (req, res) => {
-  const { username, password } = req.body;
+  const { loginIdentifier, password } = req.body; // loginIdentifier can be username OR phone number
   try {
-    const user = await User.findOne({ username }).populate('cart').populate('wishlist');
+    // Search for account records by checking both properties dynamically
+    const user = await User.findOne({
+      $or: [
+        { username: loginIdentifier },
+        { phone: loginIdentifier }
+      ]
+    }).populate('cart').populate('wishlist');
+
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET);
-    res.json({ token, user: { username: user.username, role: user.role, cart: user.cart, wishlist: user.wishlist } });
+    res.json({ token, user: { username: user.username, phone: user.phone, role: user.role, cart: user.cart, wishlist: user.wishlist } });
   } catch (error) { 
     res.status(500).json({ error: error.message }); 
   }
@@ -124,7 +140,6 @@ app.delete('/api/products/:id', requireAuth, async (req, res) => {
 });
 
 // --- FIXED CART ENDPOINTS ---
-// GET: Fetches current items inside the cart
 app.get('/api/cart', requireAuth, async (req, res) => {
   try {
     const user = await User.findById(req.userId).populate('cart');
@@ -132,7 +147,6 @@ app.get('/api/cart', requireAuth, async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// POST: Add or remove operations
 app.post('/api/cart', requireAuth, async (req, res) => {
   const { action, productId } = req.body;
   try {
@@ -149,7 +163,6 @@ app.post('/api/cart', requireAuth, async (req, res) => {
 });
 
 // --- FIXED WISHLIST ENDPOINTS ---
-// GET: Fetches current items inside the wishlist
 app.get('/api/wishlist', requireAuth, async (req, res) => {
   try {
     const user = await User.findById(req.userId).populate('wishlist');
@@ -157,7 +170,6 @@ app.get('/api/wishlist', requireAuth, async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// POST: Add or remove operations
 app.post('/api/wishlist', requireAuth, async (req, res) => {
   const { action, productId } = req.body;
   try {
