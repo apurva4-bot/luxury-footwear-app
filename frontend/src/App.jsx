@@ -448,6 +448,16 @@ function Auth() {
 
   const handleUsernameAuth = async (e) => {
     e.preventDefault();
+    
+    // Strict Enforced Validation rule: Username/Email input field must end with @gmail.com when creating or signing into accounts
+    if (!isLogin) {
+      const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+      if (!gmailRegex.test(username.trim())) {
+        alert("Registration Restricted: You must register using a valid @gmail.com address.");
+        return;
+      }
+    }
+
     try {
       const endpoint = isLogin ? '/auth/login' : '/auth/signup';
       const res = await fetchAPI(endpoint, { method: 'POST', body: JSON.stringify({ username, password }) });
@@ -497,8 +507,8 @@ function Auth() {
       {authMethod === 'username' ? (
         <form onSubmit={handleUsernameAuth} className="space-y-5">
           <div>
-            <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Username</label>
-            <input type="text" value={username} onChange={e => setUsername(e.target.value)} className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" required />
+            <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Username / Gmail</label>
+            <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="yourname@gmail.com" className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" required />
           </div>
           <div>
             <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Password</label>
@@ -558,7 +568,20 @@ function Admin() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // New product input form fields state setup
+  const [newProduct, setNewProduct] = useState({
+    name: '',
+    price: '',
+    image: '',
+    category: 'luxury',
+    variantsText: ''
+  });
+
   useEffect(() => {
+    refreshDashboard();
+  }, []);
+
+  const refreshDashboard = () => {
     fetchAPI('/admin')
       .then(res => {
         setData(res);
@@ -569,7 +592,32 @@ function Admin() {
         setError(err.message || "Failed to load dashboard data.");
         setLoading(false);
       });
-  }, []);
+  };
+
+  const handleCreateProduct = async (e) => {
+    e.preventDefault();
+    try {
+      const variantsArray = newProduct.variantsText ? newProduct.variantsText.split(',').map(v => {
+        const parts = v.split('|');
+        return { color: parts[0]?.trim(), image: parts[1]?.trim() };
+      }).filter(v => v.color && v.image) : [];
+
+      await fetchAPI('/products', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...newProduct,
+          price: Number(newProduct.price),
+          variants: variantsArray
+        })
+      });
+
+      alert("Product successfully added to the catalog!");
+      setNewProduct({ name: '', price: '', image: '', category: 'luxury', variantsText: '' });
+      refreshDashboard(); // dynamically refreshes stats counts
+    } catch (err) {
+      alert("Failed to create product setup profile.");
+    }
+  };
 
   if (loading) {
     return (
@@ -611,6 +659,47 @@ function Admin() {
           <p className="text-[10px] uppercase tracking-widest text-stone-400 font-medium mb-1">Recorded System Hits</p>
           <p className="text-3xl font-light text-stone-900">{data.logs?.length || 0}</p>
         </div>
+      </div>
+
+      {/* RE-ADD PRODUCT PANEL SECTION */}
+      <div className="border border-stone-200 bg-white p-6 shadow-sm max-w-2xl">
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-stone-900 mb-6 pb-2 border-b border-stone-100">
+          Add New Product Listing
+        </h3>
+        <form onSubmit={handleCreateProduct} className="space-y-4">
+          <div>
+            <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-1">Product Title / Name</label>
+            <input type="text" placeholder="e.g. Bow heels" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" required />
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-1">Price (Rs)</label>
+            <input type="number" placeholder="e.g. 3500" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" required />
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-1">Base Images String (Separated by | if multiple)</label>
+            <input type="text" placeholder="e.g. /images/home/brownbow_sandle.jpg" value={newProduct.image} onChange={e => setNewProduct({...newProduct, image: e.target.value})} className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" required />
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-1">Catalog Classification</label>
+            <select value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})} className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900 bg-white">
+              <option value="luxury">Luxury / Trending</option>
+              <option value="bellis">Bellis</option>
+              <option value="stiletto">Stiletto</option>
+              <option value="wedges">Wedges</option>
+              <option value="platform">Platform</option>
+              <option value="kitten">Kitten</option>
+              <option value="summer">Summer Special</option>
+              <option value="casual">Casual Wear</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-1">Color Options Variant Mapping (Format: color|imageURL, ...)</label>
+            <input type="text" placeholder="e.g. skyblue|/images/home/skybluebow_sandle.jpg" value={newProduct.variantsText} onChange={e => setNewProduct({...newProduct, variantsText: e.target.value})} className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" />
+          </div>
+          <button type="submit" className="bg-stone-900 text-white px-8 py-3 text-xs uppercase tracking-widest hover:bg-stone-800 transition-colors flex items-center gap-2">
+            <Check size={14} /> Save Product
+          </button>
+        </form>
       </div>
 
       {/* SYSTEM SUB-PANELS */}
