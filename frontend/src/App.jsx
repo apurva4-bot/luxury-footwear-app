@@ -1,6 +1,6 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
-import { ShoppingBag, User as UserIcon, Trash2, Plus, LogOut, Pencil, X, Check, Heart, Star, Menu, Ruler, Eye, EyeOff } from 'lucide-react';
+import { ShoppingBag, User as UserIcon, Trash2, Pencil, X, Check, Heart, Menu, Ruler, Eye, EyeOff, LogOut } from 'lucide-react';
 
 // Fixed backend server domain
 const API_URL = 'https://luxury-footwear-app.onrender.com';
@@ -164,18 +164,6 @@ function Home() {
       <section className="container mx-auto px-4 pb-24 max-w-6xl">
         <Products category="luxury" title="Trending Arrivals" />
       </section>
-
-      <section className="bg-stone-800 text-stone-100 py-24 text-center px-4">
-        <div className="max-w-2xl mx-auto">
-          <p className="text-stone-400 uppercase tracking-widest text-sm mb-4">Coming Soon</p>
-          <h2 className="text-3xl md:text-4xl font-light mb-6 uppercase tracking-widest">The Autumn '26 Silhouette</h2>
-          <p className="text-stone-400 mb-10">We are crafting something special. Pre-orders open next month. Drop your email to get early access before they sell out.</p>
-          <div className="flex max-w-md mx-auto">
-            <input type="email" placeholder="Your email address" className="flex-grow bg-transparent border-b border-stone-500 p-3 text-white focus:outline-none focus:border-white transition-colors" />
-            <button className="bg-white text-stone-900 px-6 uppercase tracking-widest text-xs font-bold hover:bg-stone-200">Notify Me</button>
-          </div>
-        </div>
-      </section>
     </div>
   );
 }
@@ -296,13 +284,10 @@ function Products({ category, title }) {
 
 function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }) {
   const [isEditing, setIsEditing] = useState(false);
-  
   const imageUrls = p.image ? p.image.split('|').map(url => url.trim()) : [];
   const [selectedIndex, setSelectedIndex] = useState(0);
-  
   const { wishlist, setWishlist } = useContext(AppContext);
   const inWishlist = wishlist?.some(item => item._id === p._id);
-
   const [selectedSize, setSelectedSize] = useState('');
   const [showSizeGuide, setShowSizeGuide] = useState(false);
 
@@ -311,10 +296,7 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
     variantsText: p.variants ? p.variants.map(v => `${v.color}|${v.image}`).join(', ') : ''
   });
 
-  useEffect(() => { 
-    setSelectedIndex(0); 
-  }, [p.image]);
-
+  useEffect(() => { setSelectedIndex(0); }, [p.image]);
   const currentImageSrc = imageUrls[selectedIndex] || '/images/placeholder.jpg';
 
   const handleAddToCart = async () => {
@@ -375,11 +357,11 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
 
       {isEditing ? (
         <form onSubmit={handleUpdate} className="border border-stone-200 p-4 space-y-3 bg-white">
-          <input type="text" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} className="w-full border p-2 text-sm" placeholder="Name" required/>
-          <input type="number" value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} className="w-full border p-2 text-sm" placeholder="Price" required/>
-          <input type="text" value={editForm.image} onChange={e => setEditForm({...editForm, image: e.target.value})} className="w-full border p-2 text-sm" placeholder="Main Image Path" required/>
-          <input type="text" value={editForm.category} onChange={e => setEditForm({...editForm, category: e.target.value})} className="w-full border p-2 text-sm" placeholder="Category (e.g. bellis, stiletto)" required/>
-          <input type="text" value={editForm.variantsText} onChange={e => setEditForm({...editForm, variantsText: e.target.value})} className="w-full border p-2 text-sm" placeholder="Color Variants (e.g. green|/images/green.jpg)"/>
+          <input type="text" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} className="w-full border p-2 text-sm" required/>
+          <input type="number" value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} className="w-full border p-2 text-sm" required/>
+          <input type="text" value={editForm.image} onChange={e => setEditForm({...editForm, image: e.target.value})} className="w-full border p-2 text-sm" required/>
+          <input type="text" value={editForm.category} onChange={e => setEditForm({...editForm, category: e.target.value})} className="w-full border p-2 text-sm" required/>
+          <input type="text" value={editForm.variantsText} onChange={e => setEditForm({...editForm, variantsText: e.target.value})} className="w-full border p-2 text-sm"/>
           <div className="flex gap-2">
             <button type="submit" className="flex-1 bg-stone-900 text-white py-2 text-xs uppercase"><Check size={14} className="inline mr-1"/>Save</button>
             <button type="button" onClick={() => setIsEditing(false)} className="flex-1 bg-stone-100 text-stone-600 py-2 text-xs uppercase"><X size={14} className="inline mr-1"/>Cancel</button>
@@ -388,60 +370,36 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
       ) : (
         <>
           <div className="bg-stone-100 aspect-[4/5] mb-4 overflow-hidden relative">
-            <img 
-              src={currentImageSrc} 
-              alt={p.name} 
-              className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
-              onError={(e) => { e.target.src = '/images/home/catalogues/kitten/kitten.jpg'; }}
-            />
+            <img src={currentImageSrc} alt={p.name} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" onError={(e) => { e.target.src = '/images/home/catalogues/kitten/kitten.jpg'; }} />
           </div>
-          <div className="flex justify-between items-start">
-            <div className="w-full">
-              <h3 className="text-lg font-medium text-stone-800">{p.name}</h3>
-              <p className="text-stone-500 mb-3">Rs {p.price}</p>
-              
-              <div className="flex items-center gap-2 mb-3">
-                 <select value={selectedSize} onChange={e => setSelectedSize(e.target.value)} className="border border-stone-200 text-xs p-2.5 bg-white text-stone-600 focus:outline-none flex-grow">
-                    <option value="">Select Size (EU)</option>
-                    <option value="36">36</option>
-                    <option value="37">37</option>
-                    <option value="38">38</option>
-                    <option value="39">39</option>
-                    <option value="40">40</option>
-                    <option value="41">41</option>
-                 </select>
-                 <button onClick={handleAddToCart} className="bg-stone-900 text-white px-4 py-2.5 text-[10px] uppercase tracking-widest hover:bg-stone-800 transition-colors whitespace-nowrap">
-                    Add to Cart
-                 </button>
-              </div>
+          <div>
+            <h3 className="text-lg font-medium text-stone-800">{p.name}</h3>
+            <p className="text-stone-500 mb-3">Rs {p.price}</p>
+            
+            <div className="flex items-center gap-2 mb-3">
+               <select value={selectedSize} onChange={e => setSelectedSize(e.target.value)} className="border border-stone-200 text-xs p-2.5 bg-white text-stone-600 focus:outline-none flex-grow">
+                  <option value="">Select Size (EU)</option>
+                  <option value="36">36</option>
+                  <option value="37">37</option>
+                  <option value="38">38</option>
+                  <option value="39">39</option>
+                  <option value="40">40</option>
+                  <option value="41">41</option>
+               </select>
+               <button onClick={handleAddToCart} className="bg-stone-900 text-white px-4 py-2.5 text-[10px] uppercase tracking-widest hover:bg-stone-800 transition-colors whitespace-nowrap">
+                  Add to Cart
+               </button>
+            </div>
 
-              <div className="flex justify-between items-center mt-3">
-                {imageUrls.length > 1 ? (
-                  <div className="flex gap-2">
-                    {imageUrls.map((url, idx) => {
-                      let circleColor = '#ccc';
-                      if (url.includes('black')) circleColor = '#000000';
-                      else if (url.includes('brown')) circleColor = '#8B4513';
-                      else if (url.includes('grey') || url.includes('gray')) circleColor = '#808080';
-                      else if (url.includes('skyblue')) circleColor = '#87CEEB';
-                      else if (url.includes('white')) circleColor = '#FFFFFF';
-
-                      return (
-                        <div 
-                          key={idx} 
-                          onClick={() => setSelectedIndex(idx)} 
-                          className={`w-5 h-5 rounded-full shadow-sm cursor-pointer border transition-all ${selectedIndex === idx ? 'border-stone-900 border-2 scale-110' : 'border-stone-300 hover:border-stone-500'}`} 
-                          style={{ backgroundColor: circleColor }} 
-                        />
-                      );
-                    })}
-                  </div>
-                ) : <div />} 
-
-                <button onClick={() => setShowSizeGuide(true)} className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors">
-                  <Ruler size={12} strokeWidth={2} /> Size Guide
-                </button>
-              </div>
+            <div className="flex justify-between items-center mt-3">
+              {imageUrls.length > 1 ? (
+                <div className="flex gap-2">
+                  {imageUrls.map((url, idx) => (
+                    <div key={idx} onClick={() => setSelectedIndex(idx)} className={`w-5 h-5 rounded-full shadow-sm cursor-pointer border transition-all ${selectedIndex === idx ? 'border-stone-900 border-2 scale-110' : 'border-stone-300'}`} style={{ backgroundColor: url.includes('black') ? '#000' : url.includes('brown') ? '#8B4513' : '#ccc' }} />
+                  ))}
+                </div>
+              ) : <div />} 
+              <button onClick={() => setShowSizeGuide(true)} className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-stone-400 hover:text-stone-900"><Ruler size={12} /> Size Guide</button>
             </div>
           </div>
         </>
@@ -455,89 +413,64 @@ function SizeGuideModal({ onClose }) {
     <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white max-w-lg w-full p-8 relative shadow-2xl">
         <button onClick={onClose} className="absolute top-4 right-4 text-stone-400 hover:text-stone-900"><X size={20}/></button>
-        <h3 className="text-xl font-light uppercase tracking-widest mb-2 text-center text-stone-900">Size Guide</h3>
-        <p className="text-xs text-stone-500 text-center mb-8 uppercase tracking-wide">Women's Footwear Measurements</p>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-center">
-            <thead>
-              <tr className="border-b border-stone-200 text-stone-400 uppercase text-[10px] tracking-widest">
-                <th className="py-3 font-medium">EU</th>
-                <th className="py-3 font-medium">US</th>
-                <th className="py-3 font-medium">UK</th>
-                <th className="py-3 font-medium">CM (Length)</th>
-              </tr>
-            </thead>
-            <tbody className="text-stone-700">
-              <tr className="border-b border-stone-100"><td className="py-3 font-medium">36</td><td className="py-3">5.5</td><td className="py-3">3.5</td><td className="py-3">23.0</td></tr>
-              <tr className="border-b border-stone-100"><td className="py-3 font-medium">37</td><td className="py-3">6.5</td><td className="py-3">4.5</td><td className="py-3">23.5</td></tr>
-              <tr className="border-b border-stone-100"><td className="py-3 font-medium">38</td><td className="py-3">7.5</td><td className="py-3">5.5</td><td className="py-3">24.0</td></tr>
-              <tr className="border-b border-stone-100"><td className="py-3 font-medium">39</td><td className="py-3">8.5</td><td className="py-3">6.5</td><td className="py-3">24.5</td></tr>
-              <tr className="border-b border-stone-100"><td className="py-3 font-medium">40</td><td className="py-3">9.5</td><td className="py-3">7.5</td><td className="py-3">25.0</td></tr>
-              <tr><td className="py-3 font-medium">41</td><td className="py-3">10.5</td><td className="py-3">8.5</td><td className="py-3">25.5</td></tr>
-            </tbody>
-          </table>
-        </div>
+        <h3 className="text-xl font-light uppercase tracking-widest mb-2 text-center">Size Guide</h3>
+        <table className="w-full text-sm text-center mt-4">
+          <thead>
+            <tr className="border-b border-stone-200 text-stone-400 text-[10px] tracking-widest uppercase">
+              <th className="py-2">EU</th><th className="py-2">US</th><th className="py-2">UK</th><th className="py-2">CM</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="border-b border-stone-100"><td className="py-2 font-medium">36</td><td>5.5</td><td>3.5</td><td>23.0</td></tr>
+            <tr className="border-b border-stone-100"><td className="py-2 font-medium">37</td><td>6.5</td><td>4.5</td><td>23.5</td></tr>
+            <tr className="border-b border-stone-100"><td className="py-2 font-medium">38</td><td>7.5</td><td>5.5</td><td>24.0</td></tr>
+            <tr className="border-b border-stone-100"><td className="py-2 font-medium">39</td><td>8.5</td><td>6.5</td><td>24.5</td></tr>
+            <tr><td className="py-2 font-medium">40</td><td>9.5</td><td>7.5</td><td>25.0</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   );
 }
 
-// --- FULLY IMPLEMENTED AUTH PORTAL CONTEXT CONTROLLERS WITH PASSWORD EYE VISIBILITY EYE TOGGLE & PHONE FIELD ---
 function Auth() {
   const [authMethod, setAuthMethod] = useState('username'); // 'username' or 'phone'
-  const [isLogin, setIsLogin] = useState(true);            // for username flow
-  
-  // Input fields state
+  const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [otpCode, setOtpCode] = useState('');
-  
-  // Control toggles
   const [showPassword, setShowPassword] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   
   const { setUser, setCart, setWishlist } = useContext(AppContext);
   const navigate = useNavigate();
 
-  // Route 1: Classic Username/Password Submit Handler
   const handleUsernameAuth = async (e) => {
     e.preventDefault();
     try {
       const endpoint = isLogin ? '/auth/login' : '/auth/signup';
-      const res = await fetchAPI(endpoint, {
-        method: 'POST',
-        body: JSON.stringify({ username, password })
-      });
+      const res = await fetchAPI(endpoint, { method: 'POST', body: JSON.stringify({ username, password }) });
       saveSession(res);
     } catch (err) { alert(err.message || "Authentication failed"); }
   };
 
-  // Route 2: Request 6-digit simulation code
   const handleRequestOtp = async (e) => {
     e.preventDefault();
     if (!phone) return alert("Please enter your phone number");
     try {
-      const res = await fetchAPI('/auth/send-otp', {
-        method: 'POST',
-        body: JSON.stringify({ phone })
-      });
+      const res = await fetchAPI('/auth/send-otp', { method: 'POST', body: JSON.stringify({ phone }) });
       setOtpSent(true);
       alert(`OTP Sent! (For testing, your code is: ${res.debugOtp})`);
-    } catch (err) { alert("Failed to dispatch security code"); }
+    } catch (err) { alert("Failed to send OTP"); }
   };
 
-  // Route 3: Verify security code input
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetchAPI('/auth/verify-otp', {
-        method: 'POST',
-        body: JSON.stringify({ phone, code: otpCode })
-      });
+      const res = await fetchAPI('/auth/verify-otp', { method: 'POST', body: JSON.stringify({ phone, code: otpCode }) });
       saveSession(res);
-    } catch (err) { alert("Invalid security code mismatch. Try again."); }
+    } catch (err) { alert("Invalid OTP code. Try again."); }
   };
 
   const saveSession = (res) => {
@@ -546,56 +479,38 @@ function Auth() {
     setUser(res.user);
     setCart(res.user.cart || []);
     setWishlist(res.user.wishlist || []);
-    alert("Welcome to Luxury Footwear!");
+    alert("Logged in successfully!");
     navigate('/');
   };
 
   return (
-    <div className="bg-white border border-stone-200 p-8 shadow-sm max-w-sm mx-auto">
-      
-      {/* AUTH METHOD SELECTOR SWITCH */}
+    <div className="bg-white border border-stone-200 p-8 shadow-sm">
       <div className="flex border-b border-stone-200 mb-6 text-xs uppercase tracking-widest font-medium">
-        <button 
-          onClick={() => { setAuthMethod('username'); setOtpSent(false); }}
-          className={`flex-1 pb-3 text-center transition-all ${authMethod === 'username' ? 'border-b-2 border-stone-900 text-stone-900' : 'text-stone-400'}`}
-        >
-          Username Access
+        <button type="button" onClick={() => { setAuthMethod('username'); setOtpSent(false); }} className={`flex-1 pb-3 text-center ${authMethod === 'username' ? 'border-b-2 border-stone-900 text-stone-900' : 'text-stone-400'}`}>
+          Username Login
         </button>
-        <button 
-          onClick={() => setAuthMethod('phone')}
-          className={`flex-1 pb-3 text-center transition-all ${authMethod === 'phone' ? 'border-b-2 border-stone-900 text-stone-900' : 'text-stone-400'}`}
-        >
+        <button type="button" onClick={() => setAuthMethod('phone')} className={`flex-1 pb-3 text-center ${authMethod === 'phone' ? 'border-b-2 border-stone-900 text-stone-900' : 'text-stone-400'}`}>
           Phone OTP Login
         </button>
       </div>
 
-      {/* METHOD A: USERNAME & PASSWORD STACK */}
-      {authMethod === 'username' && (
+      {authMethod === 'username' ? (
         <form onSubmit={handleUsernameAuth} className="space-y-5">
-          <h3 className="text-sm font-medium uppercase tracking-wider text-center text-stone-700">
-            {isLogin ? "Sign In with Username" : "Create New Account"}
-          </h3>
           <div>
             <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Username</label>
-            <input 
-              type="text" value={username} onChange={e => setUsername(e.target.value)} 
-              className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" required 
-            />
+            <input type="text" value={username} onChange={e => setUsername(e.target.value)} className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" required />
           </div>
           <div>
             <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Password</label>
             <div className="relative">
-              <input 
-                type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} 
-                className="w-full border border-stone-200 p-3 pr-10 text-sm focus:outline-none focus:border-stone-900" required 
-              />
+              <input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} className="w-full border border-stone-200 p-3 pr-10 text-sm focus:outline-none focus:border-stone-900" required />
               <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-900">
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
           </div>
           <button type="submit" className="w-full bg-stone-900 text-white py-3 text-xs uppercase tracking-widest hover:bg-stone-800 transition-colors">
-            {isLogin ? "Login" : "Register"}
+            {isLogin ? "Sign In" : "Register"}
           </button>
           <div className="text-center pt-2">
             <button type="button" onClick={() => setIsLogin(!isLogin)} className="text-[11px] text-stone-400 hover:text-stone-900 underline underline-offset-4">
@@ -603,42 +518,29 @@ function Auth() {
             </button>
           </div>
         </form>
-      )}
-
-      {/* METHOD B: PHONE NUMBER + OTP STACK */}
-      {authMethod === 'phone' && (
+      ) : (
         <div className="space-y-5">
-          <h3 className="text-sm font-medium uppercase tracking-wider text-center text-stone-700">
-            Passwordless OTP Entry
-          </h3>
-          
           {!otpSent ? (
             <form onSubmit={handleRequestOtp} className="space-y-4">
               <div>
                 <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Mobile Phone Number</label>
-                <input 
-                  type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="e.g. 9876543210"
-                  className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" required 
-                />
+                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="Enter mobile number" className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" required />
               </div>
               <button type="submit" className="w-full bg-stone-900 text-white py-3 text-xs uppercase tracking-widest hover:bg-stone-800 transition-colors">
-                Get Verification Code
+                Send OTP
               </button>
             </form>
           ) : (
             <form onSubmit={handleVerifyOtp} className="space-y-4">
               <div>
                 <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Enter 6-Digit OTP</label>
-                <input 
-                  type="text" value={otpCode} onChange={e => setOtpCode(e.target.value)} maxLength={6} placeholder="000000"
-                  className="w-full border border-stone-200 p-3 text-center text-lg tracking-widest focus:outline-none focus:border-stone-900 font-mono" required 
-                />
+                <input type="text" value={otpCode} onChange={e => setOtpCode(e.target.value)} maxLength={6} placeholder="000000" className="w-full border border-stone-200 p-3 text-center text-lg tracking-widest focus:outline-none focus:border-stone-900 font-mono" required />
               </div>
               <button type="submit" className="w-full bg-stone-900 text-white py-3 text-xs uppercase tracking-widest hover:bg-stone-800 transition-colors">
                 Verify & Log In
               </button>
               <button type="button" onClick={() => setOtpSent(false)} className="block mx-auto text-[10px] text-stone-400 hover:text-stone-900 uppercase tracking-wider">
-                ← Change Phone Number
+                ← Change Number
               </button>
             </form>
           )}
@@ -647,3 +549,7 @@ function Auth() {
     </div>
   );
 }
+
+function Cart() { return <div className="text-center py-12 text-stone-600 uppercase tracking-wider">Shopping Cart Loaded</div>; }
+function Wishlist() { return <div className="text-center py-12 text-stone-600 uppercase tracking-wider">Wishlist Loaded</div>; }
+function Admin() { return <div className="text-center py-12 text-stone-600 uppercase tracking-wider">Admin Dashboard</div>; }
