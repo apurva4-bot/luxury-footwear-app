@@ -485,112 +485,165 @@ function SizeGuideModal({ onClose }) {
 
 // --- FULLY IMPLEMENTED AUTH PORTAL CONTEXT CONTROLLERS WITH PASSWORD EYE VISIBILITY EYE TOGGLE & PHONE FIELD ---
 function Auth() {
-  const [isLogin, setIsLogin] = useState(true);
+  const [authMethod, setAuthMethod] = useState('username'); // 'username' or 'phone'
+  const [isLogin, setIsLogin] = useState(true);            // for username flow
+  
+  // Input fields state
   const [username, setUsername] = useState('');
-  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  
+  // Control toggles
   const [showPassword, setShowPassword] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  
   const { setUser, setCart, setWishlist } = useContext(AppContext);
   const navigate = useNavigate();
 
-  const handleAuthSubmit = async (e) => {
+  // Route 1: Classic Username/Password Submit Handler
+  const handleUsernameAuth = async (e) => {
     e.preventDefault();
     try {
       const endpoint = isLogin ? '/auth/login' : '/auth/signup';
-      const payload = isLogin 
-        ? { loginIdentifier: username, password } 
-        : { username, phone, password };
-
       const res = await fetchAPI(endpoint, {
         method: 'POST',
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ username, password })
       });
+      saveSession(res);
+    } catch (err) { alert(err.message || "Authentication failed"); }
+  };
 
-      localStorage.setItem('token', res.token);
-      localStorage.setItem('user_details', JSON.stringify(res.user));
-      setUser(res.user);
-      setCart(res.user.cart || []);
-      setWishlist(res.user.wishlist || []);
-      
-      alert(isLogin ? "Logged in successfully!" : "Account created successfully!");
-      navigate('/');
-    } catch (err) {
-      const errorMsg = err.message || "Authentication failed";
-      alert(errorMsg.includes("{") ? JSON.parse(errorMsg).error : errorMsg);
-    }
+  // Route 2: Request 6-digit simulation code
+  const handleRequestOtp = async (e) => {
+    e.preventDefault();
+    if (!phone) return alert("Please enter your phone number");
+    try {
+      const res = await fetchAPI('/auth/send-otp', {
+        method: 'POST',
+        body: JSON.stringify({ phone })
+      });
+      setOtpSent(true);
+      alert(`OTP Sent! (For testing, your code is: ${res.debugOtp})`);
+    } catch (err) { alert("Failed to dispatch security code"); }
+  };
+
+  // Route 3: Verify security code input
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetchAPI('/auth/verify-otp', {
+        method: 'POST',
+        body: JSON.stringify({ phone, code: otpCode })
+      });
+      saveSession(res);
+    } catch (err) { alert("Invalid security code mismatch. Try again."); }
+  };
+
+  const saveSession = (res) => {
+    localStorage.setItem('token', res.token);
+    localStorage.setItem('user_details', JSON.stringify(res.user));
+    setUser(res.user);
+    setCart(res.user.cart || []);
+    setWishlist(res.user.wishlist || []);
+    alert("Welcome to Luxury Footwear!");
+    navigate('/');
   };
 
   return (
-    <div className="bg-white border border-stone-200 p-8 shadow-sm">
-      <h2 className="text-xl font-light uppercase tracking-widest text-center mb-8 text-stone-900">
-        {isLogin ? "Login to Account" : "Create Account"}
-      </h2>
-      <form onSubmit={handleAuthSubmit} className="space-y-5">
-        <div>
-          <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">
-            {isLogin ? "Username or Phone Number" : "Username"}
-          </label>
-          <input 
-            type="text" 
-            value={username} 
-            onChange={e => setUsername(e.target.value)} 
-            className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" 
-            placeholder={isLogin ? "Enter username or phone" : "Choose username"} 
-            required
-          />
-        </div>
-
-        {!isLogin && (
-          <div>
-            <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Phone Number (Optional)</label>
-            <input 
-              type="tel" 
-              value={phone} 
-              onChange={e => setPhone(e.target.value)} 
-              className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" 
-              placeholder="Enter phone number" 
-            />
-          </div>
-        )}
-
-        <div>
-          <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Password</label>
-          <div className="relative">
-            <input 
-              type={showPassword ? "text" : "password"} 
-              value={password} 
-              onChange={e => setPassword(e.target.value)} 
-              className="w-full border border-stone-200 p-3 pr-10 text-sm focus:outline-none focus:border-stone-900" 
-              placeholder="Enter password" 
-              required
-            />
-            <button 
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-900 transition-colors"
-            >
-              {showPassword ? <EyeOff size={18} strokeWidth={1.5} /> : <Eye size={18} strokeWidth={1.5} />}
-            </button>
-          </div>
-        </div>
-
-        <button type="submit" className="w-full bg-stone-900 text-white py-3.5 text-xs uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors">
-          {isLogin ? "Sign In" : "Register"}
-        </button>
-      </form>
-
-      <div className="mt-6 text-center">
+    <div className="bg-white border border-stone-200 p-8 shadow-sm max-w-sm mx-auto">
+      
+      {/* AUTH METHOD SELECTOR SWITCH */}
+      <div className="flex border-b border-stone-200 mb-6 text-xs uppercase tracking-widest font-medium">
         <button 
-          onClick={() => { setIsLogin(!isLogin); setUsername(''); setPhone(''); setPassword(''); }} 
-          className="text-xs text-stone-500 hover:text-stone-900 underline underline-offset-4 tracking-wide"
+          onClick={() => { setAuthMethod('username'); setOtpSent(false); }}
+          className={`flex-1 pb-3 text-center transition-all ${authMethod === 'username' ? 'border-b-2 border-stone-900 text-stone-900' : 'text-stone-400'}`}
         >
-          {isLogin ? "Don't have an account? Register here" : "Already have an account? Login here"}
+          Username Access
+        </button>
+        <button 
+          onClick={() => setAuthMethod('phone')}
+          className={`flex-1 pb-3 text-center transition-all ${authMethod === 'phone' ? 'border-b-2 border-stone-900 text-stone-900' : 'text-stone-400'}`}
+        >
+          Phone OTP Login
         </button>
       </div>
+
+      {/* METHOD A: USERNAME & PASSWORD STACK */}
+      {authMethod === 'username' && (
+        <form onSubmit={handleUsernameAuth} className="space-y-5">
+          <h3 className="text-sm font-medium uppercase tracking-wider text-center text-stone-700">
+            {isLogin ? "Sign In with Username" : "Create New Account"}
+          </h3>
+          <div>
+            <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Username</label>
+            <input 
+              type="text" value={username} onChange={e => setUsername(e.target.value)} 
+              className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" required 
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Password</label>
+            <div className="relative">
+              <input 
+                type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} 
+                className="w-full border border-stone-200 p-3 pr-10 text-sm focus:outline-none focus:border-stone-900" required 
+              />
+              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-900">
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+          <button type="submit" className="w-full bg-stone-900 text-white py-3 text-xs uppercase tracking-widest hover:bg-stone-800 transition-colors">
+            {isLogin ? "Login" : "Register"}
+          </button>
+          <div className="text-center pt-2">
+            <button type="button" onClick={() => setIsLogin(!isLogin)} className="text-[11px] text-stone-400 hover:text-stone-900 underline underline-offset-4">
+              {isLogin ? "Need an account? Sign up here" : "Have an account? Log in here"}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* METHOD B: PHONE NUMBER + OTP STACK */}
+      {authMethod === 'phone' && (
+        <div className="space-y-5">
+          <h3 className="text-sm font-medium uppercase tracking-wider text-center text-stone-700">
+            Passwordless OTP Entry
+          </h3>
+          
+          {!otpSent ? (
+            <form onSubmit={handleRequestOtp} className="space-y-4">
+              <div>
+                <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Mobile Phone Number</label>
+                <input 
+                  type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="e.g. 9876543210"
+                  className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" required 
+                />
+              </div>
+              <button type="submit" className="w-full bg-stone-900 text-white py-3 text-xs uppercase tracking-widest hover:bg-stone-800 transition-colors">
+                Get Verification Code
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyOtp} className="space-y-4">
+              <div>
+                <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Enter 6-Digit OTP</label>
+                <input 
+                  type="text" value={otpCode} onChange={e => setOtpCode(e.target.value)} maxLength={6} placeholder="000000"
+                  className="w-full border border-stone-200 p-3 text-center text-lg tracking-widest focus:outline-none focus:border-stone-900 font-mono" required 
+                />
+              </div>
+              <button type="submit" className="w-full bg-stone-900 text-white py-3 text-xs uppercase tracking-widest hover:bg-stone-800 transition-colors">
+                Verify & Log In
+              </button>
+              <button type="button" onClick={() => setOtpSent(false)} className="block mx-auto text-[10px] text-stone-400 hover:text-stone-900 uppercase tracking-wider">
+                ← Change Phone Number
+              </button>
+            </form>
+          )}
+        </div>
+      )}
     </div>
   );
 }
-
-function Cart() { return <div className="text-center py-12 font-light uppercase tracking-wider text-stone-600">Shopping Cart Interface Loaded</div>; }
-function Wishlist() { return <div className="text-center py-12 font-light uppercase tracking-wider text-stone-600">Saved Wishlist Manifest Loaded</div>; }
-function Admin() { return <div className="text-center py-12 font-light uppercase tracking-wider text-stone-600">Secure Management Core Interface</div>; }
