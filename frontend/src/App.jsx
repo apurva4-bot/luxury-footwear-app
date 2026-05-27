@@ -552,4 +552,119 @@ function Auth() {
 
 function Cart() { return <div className="text-center py-12 text-stone-600 uppercase tracking-wider">Shopping Cart Loaded</div>; }
 function Wishlist() { return <div className="text-center py-12 text-stone-600 uppercase tracking-wider">Wishlist Loaded</div>; }
-function Admin() { return <div className="text-center py-12 text-stone-600 uppercase tracking-wider">Admin Dashboard</div>; }
+
+function Admin() {
+  const [data, setData] = useState({ users: [], logs: [], productCount: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchAPI('/admin')
+      .then(res => {
+        setData(res);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Admin data fetch error:", err);
+        setError(err.message || "Failed to load dashboard data.");
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-24">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-stone-900"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12 max-w-md mx-auto px-4">
+        <p className="text-red-600 font-medium mb-4">⚠️ Access Denied or Error</p>
+        <p className="text-stone-500 text-sm mb-6">{error}</p>
+        <p className="text-xs text-stone-400">Make sure your current account has an 'admin' role assigned in MongoDB.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-12 py-6">
+      {/* HEADER SECTION */}
+      <div className="border-b border-stone-200 pb-6">
+        <h2 className="text-2xl font-light uppercase tracking-widest text-stone-900">Admin Dashboard</h2>
+        <p className="text-stone-500 text-xs tracking-wider uppercase mt-1">Management overview & system analytics</p>
+      </div>
+
+      {/* METRIC CARD WIDGETS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="border border-stone-200 p-6 bg-white shadow-sm">
+          <p className="text-[10px] uppercase tracking-widest text-stone-400 font-medium mb-1">Total Registered Users</p>
+          <p className="text-3xl font-light text-stone-900">{data.users?.length || 0}</p>
+        </div>
+        <div className="border border-stone-200 p-6 bg-white shadow-sm">
+          <p className="text-[10px] uppercase tracking-widest text-stone-400 font-medium mb-1">Live Catalog Products</p>
+          <p className="text-3xl font-light text-stone-900">{data.productCount || 0}</p>
+        </div>
+        <div className="border border-stone-200 p-6 bg-white shadow-sm">
+          <p className="text-[10px] uppercase tracking-widest text-stone-400 font-medium mb-1">Recorded System Hits</p>
+          <p className="text-3xl font-light text-stone-900">{data.logs?.length || 0}</p>
+        </div>
+      </div>
+
+      {/* SYSTEM SUB-PANELS */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+        
+        {/* USER ACCOUNTS PANEL */}
+        <div className="border border-stone-200 bg-white shadow-sm p-6">
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-stone-900 mb-4 pb-2 border-b border-stone-100">
+            Registered Users ({data.users?.length || 0})
+          </h3>
+          <div className="overflow-y-auto max-h-[400px] divide-y divide-stone-100 pr-2">
+            {data.users && data.users.length > 0 ? (
+              data.users.map((u, index) => (
+                <div key={u._id || index} className="py-3 flex justify-between items-center text-sm">
+                  <div>
+                    <p className="font-medium text-stone-800 break-all">{u.username}</p>
+                    <p className="text-xs text-stone-400 font-mono mt-0.5">{u.phone || 'No Phone/OTP Account'}</p>
+                  </div>
+                  <span className={`text-[10px] uppercase tracking-widest font-semibold px-2 py-1 rounded ${u.role === 'admin' ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-stone-50 text-stone-600'}`}>
+                    {u.role || 'user'}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <p className="text-stone-400 text-xs py-4">No users found in database.</p>
+            )}
+          </div>
+        </div>
+
+        {/* VISITOR LOG ANALYSIS */}
+        <div className="border border-stone-200 bg-white shadow-sm p-6">
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-stone-900 mb-4 pb-2 border-b border-stone-100">
+            Recent Traffic Insights (Latest 100)
+          </h3>
+          <div className="overflow-y-auto max-h-[400px] divide-y divide-stone-100 font-mono text-xs text-stone-600 pr-2">
+            {data.logs && data.logs.length > 0 ? (
+              data.logs.map((log, index) => (
+                <div key={log._id || index} className="py-2.5 flex justify-between items-center gap-4">
+                  <div className="truncate">
+                    <span className="text-stone-400">IP:</span> {log.ip || 'unknown'}
+                    <p className="text-[10px] text-stone-400 truncate mt-0.5">ID: {log.visitorId || 'anonymous'}</p>
+                  </div>
+                  <span className="text-[10px] text-stone-400 shrink-0">
+                    {log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : 'N/A'}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <p className="text-stone-400 text-xs py-4 font-sans">No live footprint telemetry logged yet.</p>
+            )}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
