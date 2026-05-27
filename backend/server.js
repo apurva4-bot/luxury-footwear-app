@@ -123,6 +123,16 @@ app.delete('/api/products/:id', requireAuth, async (req, res) => {
   res.json({ success: true });
 });
 
+// --- FIXED CART ENDPOINTS ---
+// GET: Fetches current items inside the cart
+app.get('/api/cart', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).populate('cart');
+    res.json({ cart: user.cart || [] });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// POST: Add or remove operations
 app.post('/api/cart', requireAuth, async (req, res) => {
   const { action, productId } = req.body;
   try {
@@ -138,6 +148,16 @@ app.post('/api/cart', requireAuth, async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
+// --- FIXED WISHLIST ENDPOINTS ---
+// GET: Fetches current items inside the wishlist
+app.get('/api/wishlist', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).populate('wishlist');
+    res.json({ wishlist: user.wishlist || [] });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// POST: Add or remove operations
 app.post('/api/wishlist', requireAuth, async (req, res) => {
   const { action, productId } = req.body;
   try {
