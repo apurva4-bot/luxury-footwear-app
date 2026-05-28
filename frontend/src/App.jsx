@@ -380,8 +380,10 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
             <img src={currentImage || '/images/placeholder.jpg'} alt={p.name} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" onError={(e) => { e.target.src = '/images/home/catalogues/kitten/kitten.jpg'; }} />
           </div>
           <div>
-            <h3 className="text-lg font-medium text-stone-800">{p.name}</h3>
-            <p className="text-stone-500 mb-3">Rs {p.price}</p>
+            <h3>{p.name}</h3>
+<p className="text-stone-500 mb-3">
+  Rs {typeof p.price === 'number' ? p.price.toLocaleString('en-IN') : p.price}
+</p>
             
             <div className="flex items-center gap-2 mb-3">
                <select value={selectedSize} onChange={e => setSelectedSize(e.target.value)} className="border border-stone-200 text-xs p-2.5 bg-white text-stone-600 focus:outline-none flex-grow">
