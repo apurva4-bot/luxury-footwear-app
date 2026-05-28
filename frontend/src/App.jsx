@@ -392,14 +392,47 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
             </div>
 
             <div className="flex justify-between items-center mt-3">
-              {imageUrls.length > 1 ? (
+              {/* UPDATED DYNAMIC COLOR CIRCLES */}
+              {p.variants && p.variants.length > 0 ? (
                 <div className="flex gap-2">
-                  {imageUrls.map((url, idx) => (
-                    <div key={idx} onClick={() => setSelectedIndex(idx)} className={`w-5 h-5 rounded-full shadow-sm cursor-pointer border transition-all ${selectedIndex === idx ? 'border-stone-900 border-2 scale-110' : 'border-stone-300'}`} style={{ backgroundColor: url.includes('black') ? '#000' : url.includes('brown') ? '#8B4513' : '#ccc' }} />
-                  ))}
+                  {p.variants.map((variant, idx) => {
+                    // Color lookup dictionary for custom text values
+                    const colorMap = {
+                      'light blue': '#add8e6',
+                      'lightblue': '#add8e6',
+                      'leopard': '#b5651d',
+                      'cheetah': '#cca43b',
+                      'tan': '#d2b48c',
+                      'black': '#000000',
+                      'brown': '#8B4513'
+                    };
+
+                    const cleanColorName = variant.color?.toLowerCase().trim();
+                    const finalBgColor = colorMap[cleanColorName] || variant.color || '#ccc';
+
+                    return (
+                      <div 
+                        key={idx} 
+                        onClick={() => {
+                          if (variant.image) {
+                            const imgIdx = imageUrls.findIndex(url => url.includes(variant.image));
+                            if (imgIdx !== -1) setSelectedIndex(imgIdx);
+                          }
+                        }} 
+                        className={`w-5 h-5 rounded-full shadow-sm cursor-pointer border transition-all ${
+                          imageUrls[selectedIndex]?.includes(variant.image) ? 'border-stone-900 border-2 scale-110' : 'border-stone-300'
+                        }`} 
+                        style={{ backgroundColor: finalBgColor }}
+                        title={variant.color}
+                      />
+                    );
+                  })}
                 </div>
-              ) : <div />} 
-              <button onClick={() => setShowSizeGuide(true)} className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-stone-400 hover:text-stone-900"><Ruler size={12} /> Size Guide</button>
+              ) : <div className="h-5" />} 
+
+              <button onClick={() => setShowSizeGuide(true)} className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-stone-400 hover:text-stone-900">
+                <Ruler size={12} /> Size Guide
+              </button>
             </div>
           </div>
         </>
