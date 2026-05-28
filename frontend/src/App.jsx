@@ -376,9 +376,15 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
         </form>
       ) : (
         <>
-          <div className="bg-stone-100 aspect-[4/5] mb-4 overflow-hidden relative">
-            <img src={currentImage || '/images/placeholder.jpg'} alt={p.name} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" onError={(e) => { e.target.src = '/images/home/catalogues/kitten/kitten.jpg'; }} />
-          </div>
+        {/* Stripped the rigid aspect ratio and gray background for a seamless luxury layout */}
+<div className="w-full h-[400px] mb-4 relative flex items-center justify-center bg-transparent">
+  <img 
+    src={currentImage || '/images/placeholder.jpg'} 
+    alt={p.name} 
+    className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-500" 
+    onError={(e) => { e.target.src = '/images/home/catalogues/kitten/kitten.jpg'; }} 
+  />
+</div>
           <div>
             <div className="mt-2">
               {/* Line 1: Main Title - Clean, bold uppercase brand name */}
