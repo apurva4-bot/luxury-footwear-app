@@ -472,7 +472,6 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
   );
 }
 
-// Note: The rest of the Admin component definition from the very end of your snippet will seamlessly stitch onto the bottom setup.
 function SizeGuideModal({ onClose }) {
   return (
     <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -609,10 +608,7 @@ function Auth() {
                 <input type="text" value={otpCode} onChange={e => setOtpCode(e.target.value)} maxLength={6} placeholder="000000" className="w-full border border-stone-200 p-3 text-center text-lg tracking-widest focus:outline-none focus:border-stone-900 font-mono" required />
               </div>
               <button type="submit" className="w-full bg-stone-900 text-white py-3 text-xs uppercase tracking-widest hover:bg-stone-800 transition-colors">
-                Verify & Log In
-              </button>
-              <button type="button" onClick={() => setOtpSent(false)} className="block mx-auto text-[10px] text-stone-400 hover:text-stone-900 uppercase tracking-wider">
-                ← Change Number
+                Verify OTP
               </button>
             </form>
           )}
@@ -622,6 +618,279 @@ function Auth() {
   );
 }
 
-function Cart() { return <div className="text-center py-12 text-stone-600 uppercase tracking-wider">Shopping Cart Loaded</div>; }
-function Wishlist() { return <div className="text-center py-12 text-stone-600 uppercase tracking-wider">Wishlist Loaded</div>; }
-function Admin() { return <div className="text-center py-12 text-stone-600 uppercase tracking-wider">Admin Dashboard Loaded</div>; }
+function Cart() {
+  const { cart, setCart, user } = useContext(AppContext);
+  const navigate = useNavigate();
+
+  const handleUpdateQuantity = async (productId, size, currentQty, delta) => {
+    const newQty = currentQty + delta;
+    if (newQty <= 0) {
+      handleRemoveItem(productId, size);
+      return;
+    }
+    try {
+      const res = await fetchAPI('/cart', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'add', productId, size, quantity: delta })
+      });
+      setCart(res.cart || []);
+    } catch (err) {
+      alert("Failed to update quantity");
+    }
+  };
+
+  const handleRemoveItem = async (productId, size) => {
+    try {
+      const res = await fetchAPI('/cart', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'remove', productId, size })
+      });
+      setCart(res.cart || []);
+    } catch (err) {
+      alert("Failed to remove item");
+    }
+  };
+
+  const calculateTotal = () => {
+    return cart.reduce((acc, item) => {
+      const price = item.product?.price || 0;
+      return acc + (price * (item.quantity || 1));
+    }, 0);
+  };
+
+  if (!user) {
+    return (
+      <div className="text-center py-24">
+        <p className="text-stone-500 mb-6 font-light uppercase tracking-widest">Please sign in to view your shopping cart</p>
+        <Link to="/auth" className="bg-stone-900 text-white px-8 py-3 text-xs uppercase tracking-widest hover:bg-stone-800 transition-colors">Sign In</Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto py-12">
+      <h2 className="text-2xl font-light uppercase tracking-widest text-center mb-16">Your Shopping Bag</h2>
+      {cart.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-stone-400 font-light mb-8">Your cart is currently empty.</p>
+          <Link to="/" className="border border-stone-900 text-stone-900 px-8 py-3 text-xs uppercase tracking-widest hover:bg-stone-900 hover:text-white transition-all">Continue Shopping</Link>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+          <div className="lg:col-span-2 space-y-6">
+            {cart.map((item, idx) => {
+              const p = item.product || {};
+              const mainImg = p.image ? p.image.split('|')[0]?.trim() : '/images/placeholder.jpg';
+              return (
+                <div key={idx} className="flex gap-6 border-b border-stone-100 pb-6 items-center">
+                  <div className="w-24 h-30 bg-stone-100 overflow-hidden flex-shrink-0">
+                    <img src={mainImg} alt={p.name} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex-grow">
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-stone-900">{p.name?.split(/(?=[a-z])/)[0]?.trim()}</h3>
+                    <p className="text-xs text-stone-500 mt-0.5">{p.name?.split(/(?=[a-z])/).slice(1).join('').trim()}</p>
+                    <p className="text-xs text-stone-400 mt-2">Size: <span className="text-stone-900 font-medium">{item.size}</span></p>
+                    <div className="flex items-center gap-3 mt-4">
+                      <button onClick={() => handleUpdateQuantity(p._id, item.size, item.quantity, -1)} className="border border-stone-200 w-6 h-6 flex items-center justify-center text-stone-600 hover:border-stone-900 text-xs">-</button>
+                      <span className="text-xs font-medium font-mono">{item.quantity}</span>
+                      <button onClick={() => handleUpdateQuantity(p._id, item.size, item.quantity, 1)} className="border border-stone-200 w-6 h-6 flex items-center justify-center text-stone-600 hover:border-stone-900 text-xs">+</button>
+                    </div>
+                  </div>
+                  <div className="text-right flex flex-col justify-between h-full py-2">
+                    <p className="text-sm font-semibold text-stone-900">Rs {((p.price || 0) * (item.quantity || 1)).toLocaleString('en-IN')}</p>
+                    <button onClick={() => handleRemoveItem(p._id, item.size)} className="text-stone-400 hover:text-red-600 mt-4 self-end"><Trash2 size={16} strokeWidth={1.5} /></button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="bg-stone-50 p-8 h-fit border border-stone-100">
+            <h3 className="text-xs font-semibold uppercase tracking-widest mb-6 text-stone-900">Order Summary</h3>
+            <div className="flex justify-between text-sm border-b border-stone-200 pb-4 mb-4">
+              <span className="text-stone-500">Subtotal</span>
+              <span className="font-semibold text-stone-900">Rs {calculateTotal().toLocaleString('en-IN')}</span>
+            </div>
+            <div className="flex justify-between text-sm mb-6">
+              <span className="text-stone-500">Shipping</span>
+              <span className="text-stone-900 uppercase text-xs tracking-wider font-medium">Complimentary</span>
+            </div>
+            <div className="flex justify-between text-base font-semibold border-t border-stone-200 pt-4 mb-8">
+              <span>Total</span>
+              <span>Rs {calculateTotal().toLocaleString('en-IN')}</span>
+            </div>
+            <button onClick={() => alert("Checkout system integration coming soon!")} className="w-full bg-stone-900 text-white py-4 uppercase tracking-widest text-xs hover:bg-stone-800 transition-colors font-medium">Proceed to Checkout</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Wishlist() {
+  const { wishlist, setWishlist, user } = useContext(AppContext);
+  const navigate = useNavigate();
+
+  const handleRemoveWishlist = async (productId) => {
+    try {
+      const res = await fetchAPI('/wishlist', { method: 'POST', body: JSON.stringify({ action: 'remove', productId }) });
+      setWishlist(res.wishlist || []);
+    } catch (err) { alert("Error updating wishlist"); }
+  };
+
+  if (!user) {
+    return (
+      <div className="text-center py-24">
+        <p className="text-stone-500 mb-6 font-light uppercase tracking-widest">Please sign in to view your wishlist</p>
+        <Link to="/auth" className="bg-stone-900 text-white px-8 py-3 text-xs uppercase tracking-widest hover:bg-stone-800 transition-colors">Sign In</Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="py-12">
+      <h2 className="text-2xl font-light uppercase tracking-widest text-center mb-16">Your Curated Wishlist</h2>
+      {wishlist.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-stone-400 font-light mb-8">Your wishlist is empty.</p>
+          <Link to="/" className="border border-stone-900 text-stone-900 px-8 py-3 text-xs uppercase tracking-widest hover:bg-stone-900 hover:text-white transition-all">Explore Collections</Link>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+          {wishlist.map(p => {
+            const mainImg = p.image ? p.image.split('|')[0]?.trim() : '/images/placeholder.jpg';
+            return (
+              <div key={p._id} className="group relative bg-white border border-stone-100 p-2">
+                <button onClick={() => handleRemoveWishlist(p._id)} className="absolute top-4 right-4 z-10 p-1.5 rounded-full bg-white/80 text-stone-400 hover:text-red-500 transition-colors shadow-sm">
+                  <X size={16} />
+                </button>
+                <div className="aspect-[4/5] bg-stone-100 overflow-hidden mb-4">
+                  <img src={mainImg} alt={p.name} className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-stone-900">{p.name?.split(/(?=[a-z])/)[0]?.trim()}</h3>
+                  <p className="text-xs text-stone-500 min-h-[32px] mt-0.5">{p.name?.split(/(?=[a-z])/).slice(1).join('').trim()}</p>
+                  <p className="text-sm font-semibold text-stone-950 mt-2 mb-4">Rs {Number(p.price).toLocaleString('en-IN')}</p>
+                  <button onClick={() => navigate('/')} className="w-full bg-stone-950 text-white text-[10px] uppercase tracking-widest py-2.5 hover:bg-stone-800 transition-colors">View Product</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Admin() {
+  const { user } = useContext(AppContext);
+  const [form, setForm] = useState({ name: '', price: '', image: '', category: 'luxury', variantsText: '' });
+  const [allProducts, setAllProducts] = useState([]);
+  const [activeTab, setActiveTab] = useState('add');
+
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      fetchAPI('/products').then(setAllProducts).catch(console.error);
+    }
+  }, [user]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const variantsArray = form.variantsText ? form.variantsText.split(',').map(v => {
+        const parts = v.split('|');
+        return { color: parts[0]?.trim(), image: parts[1]?.trim() };
+      }).filter(v => v.color && v.image) : [];
+
+      await fetchAPI('/products', {
+        method: 'POST',
+        body: JSON.stringify({ ...form, price: Number(form.price), variants: variantsArray })
+      });
+      alert("Product created beautifully!");
+      setForm({ name: '', price: '', image: '', category: 'luxury', variantsText: '' });
+      fetchAPI('/products').then(setAllProducts).catch(console.error);
+    } catch (err) {
+      alert("Failed to create product");
+    }
+  };
+
+  if (user?.role !== 'admin') {
+    return (
+      <div className="text-center py-24 text-stone-500 uppercase tracking-widest text-sm font-light">
+        Access Denied. Credentials Required.
+      </div>
+    );
+  }
+
+  return (
+    <div className="py-8 max-w-4xl mx-auto">
+      <div className="text-center mb-12">
+        <h2 className="text-2xl font-light uppercase tracking-widest text-stone-900">Admin Console</h2>
+        <p className="text-stone-400 text-xs uppercase tracking-wider mt-2">RAWLES HEELS Asset Configuration</p>
+      </div>
+
+      <div className="flex justify-center gap-6 mb-12 text-xs uppercase tracking-widest border-b border-stone-200 pb-3 font-medium">
+        <button onClick={() => setActiveTab('add')} className={activeTab === 'add' ? "text-stone-900 border-b-2 border-stone-900 pb-3" : "text-stone-400"}>Add New Product</button>
+        <button onClick={() => setActiveTab('view')} className={activeTab === 'view' ? "text-stone-900 border-b-2 border-stone-900 pb-3" : "text-stone-400"}>Inventory Overview ({allProducts.length})</button>
+      </div>
+
+      {activeTab === 'add' ? (
+        <form onSubmit={handleSubmit} className="bg-white border border-stone-200 p-8 space-y-6 shadow-sm max-w-xl mx-auto">
+          <div>
+            <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Product Name</label>
+            <input type="text" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" required />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Price (INR)</label>
+              <input type="number" value={form.price} onChange={e => setForm({...form, price: e.target.value})} className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" required />
+            </div>
+            <div>
+              <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Category Placement</label>
+              <select value={form.category} onChange={e => setForm({...form, category: e.target.value})} className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900 bg-white">
+                <option value="luxury">Trending Arrivals (Luxury)</option>
+                <option value="bellis">Bellis</option>
+                <option value="stiletto">Stiletto</option>
+                <option value="wedges">Wedges</option>
+                <option value="platform">Platform</option>
+                <option value="kitten">Kitten</option>
+                <option value="summer">Summer Special</option>
+                <option value="casual">Casual Wear</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Primary Image Catalog URL</label>
+            <input type="text" value={form.image} onChange={e => setForm({...form, image: e.target.value})} placeholder="/images/home/catalogues/..." className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" required />
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Complex Variants Mapping (Optional)</label>
+            <textarea value={form.variantsText} onChange={e => setForm({...form, variantsText: e.target.value})} placeholder="bloody red|/url1, mixed red and black|/url2, polka dots(red ,black )|/url3" className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900 h-24 font-mono text-xs" />
+            <p className="text-[10px] text-stone-400 mt-1">Format: color|url, color|url (comma separated)</p>
+          </div>
+          <button type="submit" className="w-full bg-stone-900 text-white py-3.5 text-xs uppercase tracking-widest hover:bg-stone-800 transition-colors font-medium">Publish to Showroom</button>
+        </form>
+      ) : (
+        <div className="overflow-x-auto border border-stone-200 bg-white shadow-sm">
+          <table className="w-full text-sm text-left text-stone-600">
+            <thead className="text-[10px] uppercase tracking-widest bg-stone-50 text-stone-400 border-b border-stone-200">
+              <tr>
+                <th className="p-4">Product</th>
+                <th className="p-4">Category</th>
+                <th className="p-4 text-right">Price</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-stone-100">
+              {allProducts.map(item => (
+                <tr key={item._id} className="hover:bg-stone-50/50">
+                  <td className="p-4 font-medium text-stone-900">{item.name}</td>
+                  <td className="p-4 uppercase text-xs tracking-wider text-stone-500">{item.category || 'luxury'}</td>
+                  <td className="p-4 text-right font-mono text-stone-900">Rs {Number(item.price).toLocaleString('en-IN')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
