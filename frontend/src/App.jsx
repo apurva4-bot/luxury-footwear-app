@@ -284,8 +284,12 @@ function Products({ category, title }) {
 
 function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }) {
   const [isEditing, setIsEditing] = useState(false);
-  const imageUrls = p.image ? p.image.split('|').map(url => url.trim()) : [];
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  
+  // 1. Safe parsing of the main image URLs array
+  const imageUrls = p.image ? p.image.split('|').map(url => url.trim()).filter(Boolean) : [];
+  
+  // 2. Track both the active image URL and the active variant index separately
+  const [currentImage, setCurrentImage] = useState('');
   const { wishlist, setWishlist } = useContext(AppContext);
   const inWishlist = wishlist?.some(item => item._id === p._id);
   const [selectedSize, setSelectedSize] = useState('');
@@ -296,8 +300,16 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
     variantsText: p.variants ? p.variants.map(v => `${v.color}|${v.image}`).join(', ') : ''
   });
 
-  useEffect(() => { setSelectedIndex(0); }, [p.image]);
-  const currentImageSrc = imageUrls[selectedIndex] || '/images/placeholder.jpg';
+  // 3. Keep the current image fallbacks clean and updated when product changes
+  useEffect(() => { 
+    if (imageUrls.length > 0) {
+      setCurrentImage(imageUrls[0]); 
+    } else if (p.variants && p.variants.length > 0 && p.variants[0].image) {
+      setCurrentImage(p.variants[0].image);
+    } else {
+      setCurrentImage('/images/placeholder.jpg');
+    }
+  }, [p]);
 
   const handleAddToCart = async () => {
     if (!user) return navigate('/auth');
@@ -361,7 +373,7 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
           <input type="number" value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} className="w-full border p-2 text-sm" required/>
           <input type="text" value={editForm.image} onChange={e => setEditForm({...editForm, image: e.target.value})} className="w-full border p-2 text-sm" required/>
           <input type="text" value={editForm.category} onChange={e => setEditForm({...editForm, category: e.target.value})} className="w-full border p-2 text-sm" required/>
-          <input type="text" value={editForm.variantsText} onChange={e => setEditForm({...editForm, variantsText: e.target.value})} className="w-full border p-2 text-sm"/>
+          <input type="text" value={editForm.variantsText} onChange={e => setEditForm({...editForm, variantsText: e.target.value})} className="w-full border p-2 text-sm" placeholder="color|image_url, color|image_url"/>
           <div className="flex gap-2">
             <button type="submit" className="flex-1 bg-stone-900 text-white py-2 text-xs uppercase"><Check size={14} className="inline mr-1"/>Save</button>
             <button type="button" onClick={() => setIsEditing(false)} className="flex-1 bg-stone-100 text-stone-600 py-2 text-xs uppercase"><X size={14} className="inline mr-1"/>Cancel</button>
@@ -369,8 +381,14 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
         </form>
       ) : (
         <>
+          {/* Main Display Image */}
           <div className="bg-stone-100 aspect-[4/5] mb-4 overflow-hidden relative">
-            <img src={currentImageSrc} alt={p.name} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" onError={(e) => { e.target.src = '/images/home/catalogues/kitten/kitten.jpg'; }} />
+            <img 
+              src={currentImage || '/images/placeholder.jpg'} 
+              alt={p.name} 
+              className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" 
+              onError={(e) => { e.target.src = '/images/home/catalogues/kitten/kitten.jpg'; }} 
+            />
           </div>
           <div>
             <h3 className="text-lg font-medium text-stone-800">{p.name}</h3>
@@ -392,11 +410,10 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
             </div>
 
             <div className="flex justify-between items-center mt-3">
-              {/* UPDATED DYNAMIC COLOR CIRCLES */}
+              {/* FIXED DYNAMIC COLOR SELECTION */}
               {p.variants && p.variants.length > 0 ? (
                 <div className="flex gap-2">
                   {p.variants.map((variant, idx) => {
-                    // Color lookup dictionary for custom text values
                     const colorMap = {
                       'light blue': '#add8e6',
                       'lightblue': '#add8e6',
@@ -404,23 +421,26 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
                       'cheetah': '#cca43b',
                       'tan': '#d2b48c',
                       'black': '#000000',
-                      'brown': '#8B4513'
+                      'brown': '#8B4513',
+                      'white': '#ffffff',
+                      'gold': '#ffd700',
+                      'blue': '#0000ff'
                     };
 
                     const cleanColorName = variant.color?.toLowerCase().trim();
                     const finalBgColor = colorMap[cleanColorName] || variant.color || '#ccc';
+                    const isSelected = currentImage === variant.image;
 
                     return (
                       <div 
                         key={idx} 
                         onClick={() => {
                           if (variant.image) {
-                            const imgIdx = imageUrls.findIndex(url => url.includes(variant.image));
-                            if (imgIdx !== -1) setSelectedIndex(imgIdx);
+                            setCurrentImage(variant.image.trim());
                           }
                         }} 
                         className={`w-5 h-5 rounded-full shadow-sm cursor-pointer border transition-all ${
-                          imageUrls[selectedIndex]?.includes(variant.image) ? 'border-stone-900 border-2 scale-110' : 'border-stone-300'
+                          isSelected ? 'border-stone-900 border-2 scale-110' : 'border-stone-300 hover:scale-105'
                         }`} 
                         style={{ backgroundColor: finalBgColor }}
                         title={variant.color}
@@ -440,7 +460,6 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
     </div>
   );
 }
-
 function SizeGuideModal({ onClose }) {
   return (
     <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
