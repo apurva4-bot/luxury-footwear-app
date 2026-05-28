@@ -284,11 +284,7 @@ function Products({ category, title }) {
 
 function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }) {
   const [isEditing, setIsEditing] = useState(false);
-  
-  // 1. Safe parsing of the main image URLs array
   const imageUrls = p.image ? p.image.split('|').map(url => url.trim()).filter(Boolean) : [];
-  
-  // 2. Track both the active image URL and the active variant index separately
   const [currentImage, setCurrentImage] = useState('');
   const { wishlist, setWishlist } = useContext(AppContext);
   const inWishlist = wishlist?.some(item => item._id === p._id);
@@ -300,10 +296,9 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
     variantsText: p.variants ? p.variants.map(v => `${v.color}|${v.image}`).join(', ') : ''
   });
 
-  // 3. Keep the current image fallbacks clean and updated when product changes
-  useEffect(() => { 
+  useEffect(() => {
     if (imageUrls.length > 0) {
-      setCurrentImage(imageUrls[0]); 
+      setCurrentImage(imageUrls[0]);
     } else if (p.variants && p.variants.length > 0 && p.variants[0].image) {
       setCurrentImage(p.variants[0].image);
     } else {
@@ -381,14 +376,8 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
         </form>
       ) : (
         <>
-          {/* Main Display Image */}
           <div className="bg-stone-100 aspect-[4/5] mb-4 overflow-hidden relative">
-            <img 
-              src={currentImage || '/images/placeholder.jpg'} 
-              alt={p.name} 
-              className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" 
-              onError={(e) => { e.target.src = '/images/home/catalogues/kitten/kitten.jpg'; }} 
-            />
+            <img src={currentImage || '/images/placeholder.jpg'} alt={p.name} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" onError={(e) => { e.target.src = '/images/home/catalogues/kitten/kitten.jpg'; }} />
           </div>
           <div>
             <h3 className="text-lg font-medium text-stone-800">{p.name}</h3>
@@ -410,21 +399,38 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
             </div>
 
             <div className="flex justify-between items-center mt-3">
-              {/* FIXED DYNAMIC COLOR SELECTION */}
               {p.variants && p.variants.length > 0 ? (
                 <div className="flex gap-2">
                   {p.variants.map((variant, idx) => {
                     const colorMap = {
-                      'light blue': '#add8e6',
-                      'lightblue': '#add8e6',
-                      'leopard': '#b5651d',
-                      'cheetah': '#cca43b',
-                      'tan': '#d2b48c',
+                      'cream': '#fdf6e2',
+                      'green': '#2e5a44',
+                      'bloody red': '#990000',
+                      'silver': '#e0e0e0',
+                      'nude': '#e6ba9a',
+                      'pista': '#98ff98',
+                      'peach': '#ffcba4',
+                      'darkest red': '#4a0404',
+                      'mixed red and black': 'linear-gradient(135deg, #cc0000 50%, #000000 50%)',
+                      'mixed brown and nude': 'linear-gradient(135deg, #5c4033 50%, #e6ba9a 50%)',
+                      'polka dots(red ,black )': 'radial-gradient(#000000 20%, transparent 20%) 0 0/6px 6px, radial-gradient(#000000 20%, #cc0000 20%) 3px 3px/6px 6px',
                       'black': '#000000',
-                      'brown': '#8B4513',
                       'white': '#ffffff',
+                      'grey': '#808080',
+                      'brown': '#5c4033',
+                      'maroon': '#800000',
                       'gold': '#ffd700',
-                      'blue': '#0000ff'
+                      'blue': '#1e3d59',
+                      'skyblue': '#87ceeb',
+                      'pink': '#ffb6c1',
+                      'tan': '#d2b48c',
+                      'cheetah': '#cca43b',
+                      'leopard': '#b5651d',
+                      'champagne': '#f7e7ce',
+                      'rose gold': '#b76e79',
+                      'lavender': '#e6e6fa',
+                      'mint': '#aaf0d1',
+                      'charcoal': '#36454f'
                     };
 
                     const cleanColorName = variant.color?.toLowerCase().trim();
@@ -434,25 +440,16 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
                     return (
                       <div 
                         key={idx} 
-                        onClick={() => {
-                          if (variant.image) {
-                            setCurrentImage(variant.image.trim());
-                          }
-                        }} 
-                        className={`w-5 h-5 rounded-full shadow-sm cursor-pointer border transition-all ${
-                          isSelected ? 'border-stone-900 border-2 scale-110' : 'border-stone-300 hover:scale-105'
-                        }`} 
-                        style={{ backgroundColor: finalBgColor }}
+                        onClick={() => variant.image && setCurrentImage(variant.image.trim())} 
+                        className={`w-5 h-5 rounded-full shadow-sm cursor-pointer border transition-all ${isSelected ? 'border-stone-900 border-2 scale-110' : 'border-stone-300 hover:scale-105'}`} 
+                        style={{ background: finalBgColor }}
                         title={variant.color}
                       />
                     );
                   })}
                 </div>
               ) : <div className="h-5" />} 
-
-              <button onClick={() => setShowSizeGuide(true)} className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-stone-400 hover:text-stone-900">
-                <Ruler size={12} /> Size Guide
-              </button>
+              <button onClick={() => setShowSizeGuide(true)} className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-stone-400 hover:text-stone-900"><Ruler size={12} /> Size Guide</button>
             </div>
           </div>
         </>
@@ -460,6 +457,7 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
     </div>
   );
 }
+
 function SizeGuideModal({ onClose }) {
   return (
     <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -486,7 +484,7 @@ function SizeGuideModal({ onClose }) {
 }
 
 function Auth() {
-  const [authMethod, setAuthMethod] = useState('username'); // 'username' or 'phone'
+  const [authMethod, setAuthMethod] = useState('username');
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -500,8 +498,6 @@ function Auth() {
 
   const handleUsernameAuth = async (e) => {
     e.preventDefault();
-    
-    // Strict Enforced Validation rule: Username/Email input field must end with @gmail.com when creating or signing into accounts
     if (!isLogin) {
       const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
       if (!gmailRegex.test(username.trim())) {
@@ -509,7 +505,6 @@ function Auth() {
         return;
       }
     }
-
     try {
       const endpoint = isLogin ? '/auth/login' : '/auth/signup';
       const res = await fetchAPI(endpoint, { method: 'POST', body: JSON.stringify({ username, password }) });
@@ -620,18 +615,11 @@ function Admin() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // New product input form fields state setup
   const [newProduct, setNewProduct] = useState({
-    name: '',
-    price: '',
-    image: '',
-    category: 'luxury',
-    variantsText: ''
+    name: '', price: '', image: '', category: 'luxury', variantsText: ''
   });
 
-  useEffect(() => {
-    refreshDashboard();
-  }, []);
+  useEffect(() => { refreshDashboard(); }, []);
 
   const refreshDashboard = () => {
     fetchAPI('/admin')
@@ -665,7 +653,7 @@ function Admin() {
 
       alert("Product successfully added to the catalog!");
       setNewProduct({ name: '', price: '', image: '', category: 'luxury', variantsText: '' });
-      refreshDashboard(); // dynamically refreshes stats counts
+      refreshDashboard();
     } catch (err) {
       alert("Failed to create product setup profile.");
     }
@@ -690,121 +678,68 @@ function Admin() {
   }
 
   return (
-    <div className="space-y-12 py-6">
-      {/* HEADER SECTION */}
+    <div className="space-y-12">
       <div className="border-b border-stone-200 pb-6">
-        <h2 className="text-2xl font-light uppercase tracking-widest text-stone-900">Admin Dashboard</h2>
-        <p className="text-stone-500 text-xs tracking-wider uppercase mt-1">Management overview & system analytics</p>
+        <h2 className="text-3xl font-light uppercase tracking-widest text-stone-900">Management Panel</h2>
+        <p className="text-stone-400 text-xs uppercase tracking-wider mt-2">Active Products Counter: {data.productCount}</p>
       </div>
 
-      {/* METRIC CARD WIDGETS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="border border-stone-200 p-6 bg-white shadow-sm">
-          <p className="text-[10px] uppercase tracking-widest text-stone-400 font-medium mb-1">Total Registered Users</p>
-          <p className="text-3xl font-light text-stone-900">{data.users?.length || 0}</p>
-        </div>
-        <div className="border border-stone-200 p-6 bg-white shadow-sm">
-          <p className="text-[10px] uppercase tracking-widest text-stone-400 font-medium mb-1">Live Catalog Products</p>
-          <p className="text-3xl font-light text-stone-900">{data.productCount || 0}</p>
-        </div>
-        <div className="border border-stone-200 p-6 bg-white shadow-sm">
-          <p className="text-[10px] uppercase tracking-widest text-stone-400 font-medium mb-1">Recorded System Hits</p>
-          <p className="text-3xl font-light text-stone-900">{data.logs?.length || 0}</p>
-        </div>
-      </div>
-
-      {/* RE-ADD PRODUCT PANEL SECTION */}
-      <div className="border border-stone-200 bg-white p-6 shadow-sm max-w-2xl">
-        <h3 className="text-xs font-semibold uppercase tracking-widest text-stone-900 mb-6 pb-2 border-b border-stone-100">
-          Add New Product Listing
-        </h3>
-        <form onSubmit={handleCreateProduct} className="space-y-4">
-          <div>
-            <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-1">Product Title / Name</label>
-            <input type="text" placeholder="e.g. Bow heels" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" required />
-          </div>
-          <div>
-            <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-1">Price (Rs)</label>
-            <input type="number" placeholder="e.g. 3500" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" required />
-          </div>
-          <div>
-            <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-1">Base Images String (Separated by | if multiple)</label>
-            <input type="text" placeholder="e.g. /images/home/brownbow_sandle.jpg" value={newProduct.image} onChange={e => setNewProduct({...newProduct, image: e.target.value})} className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" required />
-          </div>
-          <div>
-            <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-1">Catalog Classification</label>
-            <select value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})} className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900 bg-white">
-              <option value="luxury">Luxury / Trending</option>
-              <option value="bellis">Bellis</option>
-              <option value="stiletto">Stiletto</option>
-              <option value="wedges">Wedges</option>
-              <option value="platform">Platform</option>
-              <option value="kitten">Kitten</option>
-              <option value="summer">Summer Special</option>
-              <option value="casual">Casual Wear</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-1">Color Options Variant Mapping (Format: color|imageURL, ...)</label>
-            <input type="text" placeholder="e.g. skyblue|/images/home/skybluebow_sandle.jpg" value={newProduct.variantsText} onChange={e => setNewProduct({...newProduct, variantsText: e.target.value})} className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" />
-          </div>
-          <button type="submit" className="bg-stone-900 text-white px-8 py-3 text-xs uppercase tracking-widest hover:bg-stone-800 transition-colors flex items-center gap-2">
-            <Check size={14} /> Save Product
-          </button>
-        </form>
-      </div>
-
-      {/* SYSTEM SUB-PANELS */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-        
-        {/* USER ACCOUNTS PANEL */}
-        <div className="border border-stone-200 bg-white shadow-sm p-6">
-          <h3 className="text-xs font-semibold uppercase tracking-widest text-stone-900 mb-4 pb-2 border-b border-stone-100">
-            Registered Users ({data.users?.length || 0})
-          </h3>
-          <div className="overflow-y-auto max-h-[400px] divide-y divide-stone-100 pr-2">
-            {data.users && data.users.length > 0 ? (
-              data.users.map((u, index) => (
-                <div key={u._id || index} className="py-3 flex justify-between items-center text-sm">
-                  <div>
-                    <p className="font-medium text-stone-800 break-all">{u.username}</p>
-                    <p className="text-xs text-stone-400 font-mono mt-0.5">{u.phone || 'No Phone/OTP Account'}</p>
-                  </div>
-                  <span className={`text-[10px] uppercase tracking-widest font-semibold px-2 py-1 rounded ${u.role === 'admin' ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-stone-50 text-stone-600'}`}>
-                    {u.role || 'user'}
-                  </span>
-                </div>
-              ))
-            ) : (
-              <p className="text-stone-400 text-xs py-4">No users found in database.</p>
-            )}
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+        <div className="lg:col-span-1 bg-stone-50 p-8 border border-stone-200">
+          <h3 className="text-sm font-medium uppercase tracking-widest text-stone-900 mb-6">Add New Catalogue Entry</h3>
+          <form onSubmit={handleCreateProduct} className="space-y-5">
+            <div>
+              <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Item Designation</label>
+              <input type="text" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="w-full bg-white border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" required />
+            </div>
+            <div>
+              <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Price Value (INR)</label>
+              <input type="number" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} className="w-full bg-white border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" required />
+            </div>
+            <div>
+              <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Root Image Path</label>
+              <input type="text" value={newProduct.image} onChange={e => setNewProduct({...newProduct, image: e.target.value})} placeholder="/images/home/catalogues/..." className="w-full bg-white border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" required />
+            </div>
+            <div>
+              <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Active Category Section</label>
+              <select value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})} className="w-full bg-white border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900">
+                <option value="bellis">Bellis</option>
+                <option value="stiletto">Stiletto</option>
+                <option value="wedges">Wedges</option>
+                <option value="platform">Platform</option>
+                <option value="kitten">Kitten</option>
+                <option value="luxury">Trending / Luxury</option>
+                <option value="summer">Summer Special</option>
+                <option value="casual">Casual Wear</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Color Matrix Variants String</label>
+              <input type="text" value={newProduct.variantsText} onChange={e => setNewProduct({...newProduct, variantsText: e.target.value})} placeholder="black|/images/img1.jpg, gold|/images/img2.jpg" className="w-full bg-white border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" />
+            </div>
+            <button type="submit" className="w-full bg-stone-900 text-white py-3.5 text-xs uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors">Commit Entry</button>
+          </form>
         </div>
 
-        {/* VISITOR LOG ANALYSIS */}
-        <div className="border border-stone-200 bg-white shadow-sm p-6">
-          <h3 className="text-xs font-semibold uppercase tracking-widest text-stone-900 mb-4 pb-2 border-b border-stone-100">
-            Recent Traffic Insights (Latest 100)
-          </h3>
-          <div className="overflow-y-auto max-h-[400px] divide-y divide-stone-100 font-mono text-xs text-stone-600 pr-2">
-            {data.logs && data.logs.length > 0 ? (
-              data.logs.map((log, index) => (
-                <div key={log._id || index} className="py-2.5 flex justify-between items-center gap-4">
-                  <div className="truncate">
-                    <span className="text-stone-400">IP:</span> {log.ip || 'unknown'}
-                    <p className="text-[10px] text-stone-400 truncate mt-0.5">ID: {log.visitorId || 'anonymous'}</p>
-                  </div>
-                  <span className="text-[10px] text-stone-400 shrink-0">
-                    {log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : 'N/A'}
-                  </span>
-                </div>
-              ))
-            ) : (
-              <p className="text-stone-400 text-xs py-4 font-sans">No live footprint telemetry logged yet.</p>
-            )}
+        <div className="lg:col-span-2 space-y-8">
+          <div className="bg-white border border-stone-200 p-6">
+            <h3 className="text-sm font-medium uppercase tracking-widest text-stone-900 mb-4">System Access Profiles ({data.users?.length || 0})</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-stone-600">
+                <thead>
+                  <tr className="border-b border-stone-200 text-stone-400 uppercase tracking-wider">
+                    <th className="pb-3">Identity Contact</th><th className="pb-3">Assigned Authorization</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {data.users?.map((u, idx) => (
+                    <tr key={idx}><td className="py-3 font-medium text-stone-800">{u.username || u.phone}</td><td className="py-3 uppercase text-stone-500">{u.role}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-
       </div>
     </div>
   );
