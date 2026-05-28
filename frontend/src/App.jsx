@@ -380,7 +380,17 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
             <img src={currentImage || '/images/placeholder.jpg'} alt={p.name} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" onError={(e) => { e.target.src = '/images/home/catalogues/kitten/kitten.jpg'; }} />
           </div>
           <div>
-            <h3>{p.name}</h3>
+            <div>
+  {/* Line 1: Main Title (Everything in ALL CAPS) */}
+  <h3 className="text-base font-semibold text-stone-950 uppercase tracking-wider">
+    {p.name.split(/(?=[a-z])/)[0]?.trim()}
+  </h3>
+  
+  {/* Line 2: Subtitle Description (The rest of the text) */}
+  <p className="text-xs text-stone-500 font-light mt-0.5 italic">
+    {p.name.split(/(?=[a-z])/).slice(1).join('').trim()}
+  </p>
+</div>
 <p className="text-stone-500 mb-3">
   Rs {typeof p.price === 'number' ? p.price.toLocaleString('en-IN') : p.price}
 </p>
