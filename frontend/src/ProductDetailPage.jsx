@@ -1,25 +1,40 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { AppContext } from './App'; 
-import { Ruler } from 'lucide-react'; // Matches your iconic design libraries
+import { AppContext } from './App.jsx'; // Explicitly adding .jsx extension fixes Vercel bundling issues
 
 function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   
-  // Grabbing the global state
+  // Extracting products directly from context
   const { products } = useContext(AppContext);
   
-  // Find the matching shoe matching the route parameters
+  // Find the unique item matching the URL parameter
   const product = products?.find((p) => p._id === id);
 
-  // Dynamic Image View Trackers for Modification 2
+  // Image viewer state tracker
   const [activeImage, setActiveImage] = useState('');
 
-  // Synchronize state when the component mounts or product changes
+  // Extract all available images (handles both arrays and pipe-separated strings)
+  const getImageList = () => {
+    if (!product) return [];
+    if (!product.image) return [];
+    
+    // If the image string contains '|', split it into an array of clean URLs
+    if (typeof product.image === 'string' && product.image.includes('|')) {
+      return product.image.split('|').map(url => url.trim()).filter(Boolean);
+    }
+    
+    // Fallback if it's a single image string
+    return [product.image];
+  };
+
+  const allImages = getImageList();
+
+  // Set the default hero image when product loads
   useEffect(() => {
-    if (product) {
-      setActiveImage(product.image);
+    if (allImages.length > 0) {
+      setActiveImage(allImages[0]);
     }
   }, [product]);
 
@@ -34,59 +49,48 @@ function ProductDetailPage() {
     );
   }
 
-  // Handle building the image array from strings or variants
-  const allImages = [];
-  if (product.image) allImages.push(product.image);
-  
-  // If your database has an image pipe structure or variant paths, pull them here safely
-  if (product.variants && product.variants.length > 0) {
-    product.variants.forEach(v => {
-      if (v.image && !allImages.includes(v.image.trim())) {
-        allImages.push(v.image.trim());
-      }
-    });
-  }
-
+  // Formatting product names nicely
   const mainTitle = product.name.split(/(?=[a-z])/)[0]?.trim();
   const subtitle = product.name.split(/(?=[a-z])/).slice(1).join('').trim();
 
   return (
     <div className="min-h-screen bg-white pt-6 pb-12 text-left">
-      {/* Mobile Breadcrumb Link */}
+      {/* Mobile Navigation */}
       <div className="px-4 mb-4 md:hidden">
         <button onClick={() => navigate(-1)} className="text-stone-500 text-xs uppercase tracking-widest flex items-center gap-1">
-          ← Back
+          ← Back to Collection
         </button>
       </div>
 
       <div className="container mx-auto px-4 max-w-6xl">
+        {/* Two-Column Detail Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
           
-          {/* LEFT: Product Presentation Engine (Main Image + Thumbnail Strip) */}
-          <div className="flex flex-col items-center">
-            {/* Large Hero Showcase */}
+          {/* LEFT COLUMN: Image Showcase Arena */}
+          <div className="flex flex-col items-center w-full">
+            {/* Big Main Display */}
             <div className="w-full bg-stone-50 flex items-center justify-center p-4 border border-stone-100 aspect-square md:h-[500px] overflow-hidden">
               <img 
-                src={activeImage || product.image || '/images/placeholder.jpg'} 
+                src={activeImage} 
                 alt={product.name} 
-                className="max-w-full max-h-full object-contain transition-all duration-300"
+                className="max-w-full max-h-full object-contain transition-all duration-200"
               />
             </div>
 
-            {/* MODIFICATION 2: Amazon-Style Multi-Image Sliding Selector Strip */}
+            {/* MODIFICATION 2: Image Strip Selector (Amazon Style) */}
             {allImages.length > 1 && (
-              <div className="w-full flex gap-2 mt-3 overflow-x-auto pb-2 scrollbar-thin">
+              <div className="w-full flex gap-2 mt-3 overflow-x-auto pb-2 custom-scrollbar">
                 {allImages.map((imgUrl, index) => (
                   <button
                     key={index}
                     onClick={() => setActiveImage(imgUrl)}
-                    className={`w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 border bg-stone-50 p-1 transition-all ${
-                      activeImage === imgUrl ? 'border-stone-950 ring-1 ring-stone-950' : 'border-stone-200 hover:border-stone-400'
+                    className={`w-16 h-16 flex-shrink-0 border bg-stone-50 p-1 transition-all ${
+                      activeImage === imgUrl ? 'border-stone-900 ring-1 ring-stone-900' : 'border-stone-200 opacity-70 hover:opacity-100'
                     }`}
                   >
                     <img 
                       src={imgUrl} 
-                      alt={`View ${index + 1}`} 
+                      alt={`Thumbnail ${index + 1}`} 
                       className="w-full h-full object-cover" 
                     />
                   </button>
@@ -95,10 +99,10 @@ function ProductDetailPage() {
             )}
           </div>
 
-          {/* RIGHT: Ordering Console Controls */}
-          <div className="flex flex-col justify-start mt-4 md:mt-0">
+          {/* RIGHT COLUMN: Ordering System */}
+          <div className="flex flex-col justify-start">
             <span className="text-stone-400 text-xs uppercase tracking-widest font-medium mb-1">
-              RAWLES HEELS BRAND COLLECTION
+              RAWLES HEELS EXCLUSIVE
             </span>
             <h1 className="text-2xl md:text-3xl font-semibold uppercase tracking-wider text-stone-900">
               {mainTitle}
@@ -116,23 +120,27 @@ function ProductDetailPage() {
             <hr className="border-stone-200 mb-6" />
 
             <p className="text-stone-600 text-sm leading-relaxed mb-8">
-              Handcrafted premium luxury footwear design. Made with high-grade, resilient materials optimizing contour support for graceful strides and structural perfection.
+              Handcrafted with exceptional premium luxury detailing. Features custom-molded interior footbeds optimized for incredible comfort and sophisticated styling.
             </p>
 
-            {/* Sizes Box Selection */}
-            <div className="mb-6">
-              <label className="block text-xs uppercase tracking-widest font-semibold text-stone-700 mb-2">Select Size (EU)</label>
-              <div className="grid grid-cols-6 gap-2 max-w-sm">
-                {["36", "37", "38", "39", "40", "41"].map((size) => (
-                  <button key={size} className="border border-stone-200 py-2.5 text-xs hover:border-stone-900 transition-colors uppercase font-medium bg-white text-stone-800">
-                    {size}
-                  </button>
-                ))}
-              </div>
+            {/* Size Dropdown Picker */}
+            <div className="mb-6 max-w-xs">
+              <label className="block text-xs uppercase tracking-widest font-semibold text-stone-700 mb-2">
+                Select Size (EU)
+              </label>
+              <select className="w-full border border-stone-300 bg-white p-3 text-xs tracking-wider uppercase focus:outline-none focus:border-stone-900">
+                <option value="">Choose Size</option>
+                <option value="36">EU 36</option>
+                <option value="37">EU 37</option>
+                <option value="38">EU 38</option>
+                <option value="39">EU 39</option>
+                <option value="40">EU 40</option>
+                <option value="41">EU 41</option>
+              </select>
             </div>
 
-            {/* Core Action CTA Buttons */}
-            <div className="space-y-3 max-w-md">
+            {/* Action CTA */}
+            <div className="mt-2">
               <button className="w-full bg-stone-900 text-white py-4 text-xs uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors">
                 Add To Bag
               </button>
