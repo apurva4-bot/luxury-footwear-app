@@ -1,6 +1,8 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { AppContext } from './App.jsx'; // Explicitly adding .jsx extension fixes Vercel bundling issues
+
+// Going up one level explicitly to guarantee Vercel hits App.jsx directly
+import { AppContext } from '../src/App.jsx';
 
 function ProductDetailPage() {
   const { id } = useParams();
