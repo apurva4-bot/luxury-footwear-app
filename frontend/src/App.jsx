@@ -1,6 +1,8 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { ShoppingBag, User as UserIcon, Trash2, Pencil, X, Check, Heart, Menu, Ruler, Eye, EyeOff, LogOut } from 'lucide-react';
+import ProductDetailPage from './ProductDetailPage';
+import { Link } from 'react-router-dom';
 
 // Fixed backend server domain
 const API_URL = 'https://luxury-footwear-app.onrender.com';
@@ -92,6 +94,7 @@ export default function App() {
               <Route path="/cart" element={<div className="container mx-auto px-4 py-8 max-w-6xl"><Cart /></div>} />
               <Route path="/wishlist" element={<div className="container mx-auto px-4 py-8 max-w-6xl"><Wishlist /></div>} /> 
               <Route path="/admin" element={<div className="container mx-auto px-4 py-8 max-w-6xl"><Admin /></div>} />
+              <Route path="/product/:id" element={<ProductDetailPage />} />
             </Routes>
           </main>
           
@@ -462,6 +465,130 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
                     const finalBgColor = colorMap[cleanColorName] || variant.color || '#ccc';
                     const isSelected = currentImage === variant.image;
 
+                   return (
+    <div className="group relative">
+      {showSizeGuide && <SizeGuideModal onClose={() => setShowSizeGuide(false)} />}
+      {showReviews && <ProductReviewsModal p={p} user={user} onClose={() => setShowReviews(false)} />}
+
+      {!isEditing && (
+        <button onClick={handleToggleWishlist} className="absolute top-2 left-2 z-10 p-2 rounded-full bg-white/50 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all hover:bg-white text-stone-400">
+          <Heart size={18} className={inWishlist ? "fill-red-500 text-red-500" : "hover:text-red-500"} />
+        </button>
+      )}
+
+      {user?.role === 'admin' && !isEditing && (
+        <div className="absolute top-2 right-2 flex gap-2 z-10 bg-white/70 p-1 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
+          <button onClick={() => setIsEditing(true)} className="text-stone-500 hover:text-stone-900 p-1"><Pencil size={16} strokeWidth={1.5}/></button>
+          <button onClick={() => handleDelete(p._id)} className="text-red-400 hover:text-red-700 p-1"><Trash2 size={16} strokeWidth={1.5}/></button>
+        </div>
+      )}
+
+      {isEditing ? (
+        <form onSubmit={handleUpdate} className="border border-stone-200 p-4 space-y-3 bg-white">
+          <input type="text" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} className="w-full border p-2 text-sm" required/>
+          <input type="number" value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} className="w-full border p-2 text-sm" required/>
+          <input type="text" value={editForm.image} onChange={e => setEditForm({...editForm, image: e.target.value})} className="w-full border p-2 text-sm" required/>
+          <input type="text" value={editForm.category} onChange={e => setEditForm({...editForm, category: e.target.value})} className="w-full border p-2 text-sm" required/>
+          <input type="text" value={editForm.variantsText} onChange={e => setEditForm({...editForm, variantsText: e.target.value})} className="w-full border p-2 text-sm" placeholder="color|image_url, color|image_url"/>
+          <div className="flex gap-2">
+            <button type="submit" className="flex-1 bg-stone-900 text-white py-2 text-xs uppercase"><Check size={14} className="inline mr-1"/>Save</button>
+            <button type="button" onClick={() => setIsEditing(false)} className="flex-1 bg-stone-100 text-stone-600 py-2 text-xs uppercase"><X size={14} className="inline mr-1"/>Cancel</button>
+          </div>
+        </form>
+      ) : (
+        <>
+          {/* LINK WRAPPER STARTS: Clicking the image or titles redirects the user to the details interface */}
+          <Link to={`/product/${p._id}`} className="block group cursor-pointer text-left">
+            
+            {/* The image container frame */}
+            <div className="w-full h-[180px] sm:h-[240px] md:h-[350px] lg:h-[400px] mb-3 relative flex items-center justify-center bg-transparent">
+              <img 
+                src={currentImage || '/images/placeholder.jpg'} 
+                alt={p.name} 
+                className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-500" 
+                onError={(e) => { e.target.src = '/images/home/catalogues/kitten/kitten.jpg'; }} 
+              />
+            </div>
+
+            {/* Left alignment typography */}
+            <div className="text-left px-1 sm:px-0">
+              <div className="mt-2">
+                {/* Line 1: Main Title */}
+                <h3 className="text-xs sm:text-base font-semibold text-stone-900 uppercase tracking-wider truncate">
+                  {p.name.split(/(?=[a-z])/)[0]?.trim()}
+                </h3>
+                
+                {/* Line 2: Subtitle Description */}
+                <p className="text-[11px] sm:text-sm text-stone-500 font-medium tracking-wide mt-0.5 mb-2 truncate">
+                  {p.name.split(/(?=[a-z])/).slice(1).join('').trim()}
+                </p>
+                
+                {/* Line 3: Price */}
+                <p className="text-stone-950 font-semibold text-sm sm:text-base mb-2">
+                  Rs {isNaN(Number(p.price)) ? p.price : Number(p.price).toLocaleString('en-IN')}
+                </p>
+              </div>
+            </div>
+
+          </Link>
+          {/* LINK WRAPPER ENDS */}
+          
+          {/* Interactive Form Fields and Buttons sit outside the Link so they remain fully interactive */}
+          <div className="text-left px-1 sm:px-0">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 mb-3">
+               <select value={selectedSize} onChange={e => setSelectedSize(e.target.value)} className="border border-stone-200 text-[11px] sm:text-xs p-2 bg-white text-stone-600 focus:outline-none flex-grow rounded-none">
+                  <option value="">Size (EU)</option>
+                  <option value="36">36</option>
+                  <option value="37">37</option>
+                  <option value="38">38</option>
+                  <option value="39">39</option>
+                  <option value="40">40</option>
+                  <option value="41">41</option>
+               </select>
+               <button onClick={handleAddToCart} className="bg-stone-900 text-white px-3 py-2 text-[10px] uppercase tracking-widest hover:bg-stone-800 transition-colors text-center">
+                  Add to Cart
+               </button>
+            </div>
+
+            <div className="flex justify-between items-center mt-3">
+              {p.variants && p.variants.length > 0 ? (
+                <div className="flex gap-2">
+                  {p.variants.map((variant, idx) => {
+                    const colorMap = {
+                      'cream': '#fdf6e2',
+                      'green': '#3bb87c',
+                      'bloody red': '#990000',
+                      'silver': '#e0e0e0',
+                      'nude': '#e6ba9a',
+                      'pista': '#98ff98',
+                      'peach': '#ffcba4',
+                      'darkest red': '#4a0404',
+                      'mixed red and black': 'linear-gradient(135deg, #cc0000 50%, #000000 50%)',
+                      'mixed brown and nude': 'linear-gradient(135deg, #5c4033 50%, #e6ba9a 50%)',
+                      'polka dots(red ,black )': 'radial-gradient(#000000 20%, transparent 20%) 0 0/6px 6px, radial-gradient(#000000 20%, #cc0000 20%) 3px 3px/6px 6px',
+                      'black': '#000000',
+                      'white': '#ffffff',
+                      'grey': '#808080',
+                      'brown': '#5c4033',
+                      'maroon': '#800000',
+                      'gold': '#ffd900',
+                      'blue': '#1e3d59',
+                      'skyblue': '#87ceeb',
+                      'pink': '#ffb6c1',
+                      'tan': '#d2b48c',
+                      'cheetah': '#ffb700',
+                      'leopard': '#b5651d',
+                      'champagne': '#f7e7ce',
+                      'rose gold': '#b76e79',
+                      'lavender': '#e6e6fa',
+                      'mint': '#aaf0d1',
+                      'charcoal': '#36454f'
+                    };
+
+                    const cleanColorName = variant.color?.toLowerCase().trim();
+                    const finalBgColor = colorMap[cleanColorName] || variant.color || '#ccc';
+                    const isSelected = currentImage === variant.image;
+
                     return (
                       <div 
                         key={idx} 
@@ -473,7 +600,9 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
                     );
                   })}
                 </div>
-              ) : <div className="h-5" />} <div className="flex gap-4">
+              ) : <div className="h-5" />}
+              
+              <div className="flex gap-4">
                 <button 
                   type="button" 
                   onClick={() => setShowReviews(true)} 
@@ -496,7 +625,6 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
       )}
     </div>
   );
-}
 
 function SizeGuideModal({ onClose }) {
   return (
