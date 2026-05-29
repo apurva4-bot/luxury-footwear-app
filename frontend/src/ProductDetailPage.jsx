@@ -1,6 +1,6 @@
 import React, { useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { AppContext } from './AppContext'; // Note: Double-check if your AppContext file is named exactly this
+import { AppContext } from './App';
 
 function ProductDetailPage() {
   const { id } = useParams();
