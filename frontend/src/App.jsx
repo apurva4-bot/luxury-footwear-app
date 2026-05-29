@@ -387,27 +387,29 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
     onError={(e) => { e.target.src = '/images/home/catalogues/kitten/kitten.jpg'; }} 
   />
 </div>
-          <div>
+         {/* Left alignment and minor padding provides a clean, modern Amazon structure */}
+          <div className="text-left px-1 sm:px-0">
             <div className="mt-2">
-              {/* Line 1: Main Title - Clean, bold uppercase brand name */}
-              <h3 className="text-base font-semibold text-stone-900 uppercase tracking-wider">
+              {/* Line 1: Main Title - Scales down on mobile so it never wraps awkwardly */}
+              <h3 className="text-xs sm:text-base font-semibold text-stone-900 uppercase tracking-wider truncate">
                 {p.name.split(/(?=[a-z])/)[0]?.trim()}
               </h3>
               
-              {/* Line 2: Subtitle Description - Thicker, non-italic, clean text with layout spacing */}
-              <p className="text-sm text-stone-500 font-medium tracking-wide mt-1 mb-3">
+              {/* Line 2: Subtitle Description - Clean font-sizes optimized for double columns */}
+              <p className="text-[11px] sm:text-sm text-stone-500 font-medium tracking-wide mt-0.5 mb-2 truncate">
                 {p.name.split(/(?=[a-z])/).slice(1).join('').trim()}
               </p>
               
-              {/* Line 3: Price - Separated from the text above by mb-3 spacing */}
-              <p className="text-stone-950 font-semibold text-base mb-3">
+              {/* Line 3: Price */}
+              <p className="text-stone-950 font-semibold text-sm sm:text-base mb-2">
                 Rs {isNaN(Number(p.price)) ? p.price : Number(p.price).toLocaleString('en-IN')}
               </p>
             </div>
             
-            <div className="flex items-center gap-2 mb-3">
-               <select value={selectedSize} onChange={e => setSelectedSize(e.target.value)} className="border border-stone-200 text-xs p-2.5 bg-white text-stone-600 focus:outline-none flex-grow">
-                  <option value="">Select Size (EU)</option>
+            {/* Form Fields: flex-wrap ensures components don't overflow on mobile screens */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 mb-3">
+               <select value={selectedSize} onChange={e => setSelectedSize(e.target.value)} className="border border-stone-200 text-[11px] sm:text-xs p-2 bg-white text-stone-600 focus:outline-none flex-grow rounded-none">
+                  <option value="">Size (EU)</option>
                   <option value="36">36</option>
                   <option value="37">37</option>
                   <option value="38">38</option>
@@ -415,7 +417,7 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
                   <option value="40">40</option>
                   <option value="41">41</option>
                </select>
-               <button onClick={handleAddToCart} className="bg-stone-900 text-white px-4 py-2.5 text-[10px] uppercase tracking-widest hover:bg-stone-800 transition-colors whitespace-nowrap">
+               <button onClick={handleAddToCart} className="bg-stone-900 text-white px-3 py-2 text-[10px] uppercase tracking-widest hover:bg-stone-800 transition-colors text-center">
                   Add to Cart
                </button>
             </div>
