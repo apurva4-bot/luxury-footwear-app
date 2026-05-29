@@ -29,7 +29,7 @@ const fetchAPI = async (endpoint, options = {}) => {
   return response.json();
 };
 
-const AppContext = createContext();
+export const AppContext = createContext(null);
 
 export default function App() {
   const [user, setUser] = useState(null);
