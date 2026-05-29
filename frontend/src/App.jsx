@@ -273,7 +273,7 @@ function Products({ category, title }) {
   return (
     <div>
       <h2 className="text-2xl font-light mb-12 uppercase tracking-widest text-center">{title}</h2>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-10 md:grid-cols-3"> 
+        <div className="grid grid-cols-2 gap-x-2 gap-y-8 md:grid-cols-3 lg:grid-cols-4 px-1"> 
         {displayedProducts.map(p => (
           <ProductCard key={p._id} p={p} user={user} handleDelete={handleDelete} fetchProducts={fetchProducts} navigate={navigate} setCart={setCart} />
         ))}
@@ -379,7 +379,8 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
       ) : (
         <>
         {/* Stripped the rigid aspect ratio and gray background for a seamless luxury layout */}
-<div className="w-full h-[180px] sm:h-[260px] md:h-[400px] mb-4 relative flex items-center justify-center bg-transparent">
+{/* This gives the image a square, prominent frame on mobile devices */}
+<div className="w-full h-[180px] sm:h-[240px] md:h-[350px] lg:h-[400px] mb-3 relative flex items-center justify-center bg-transparent">
   <img 
     src={currentImage || '/images/placeholder.jpg'} 
     alt={p.name} 
@@ -932,7 +933,7 @@ function Wishlist() {
           <Link to="/" className="border border-stone-900 text-stone-900 px-8 py-3 text-xs uppercase tracking-widest hover:bg-stone-900 hover:text-white transition-all">Explore Collections</Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-2 gap-x-2 gap-y-8 md:grid-cols-3 lg:grid-cols-4 px-1"> 
           {wishlist.map(p => {
             const mainImg = p.image ? p.image.split('|')[0]?.trim() : '/images/placeholder.jpg';
             return (
