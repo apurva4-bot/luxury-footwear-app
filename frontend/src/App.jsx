@@ -284,6 +284,7 @@ function Products({ category, title }) {
   );
 }
 
+import { Link } from 'react-router-dom';
 function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }) {
   const [isEditing, setIsEditing] = useState(false);
   const imageUrls = p.image ? p.image.split('|').map(url => url.trim()).filter(Boolean) : [];
@@ -348,7 +349,7 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
     } catch (err) { alert("Failed to update"); }
   };
 
-  return (
+ return (
     <div className="group relative">
       {showSizeGuide && <SizeGuideModal onClose={() => setShowSizeGuide(false)} />}
       {showReviews && <ProductReviewsModal p={p} user={user} onClose={() => setShowReviews(false)} />}
@@ -382,11 +383,12 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
         <>
           {/* Visual card content wrapped inside a Link route handler */}
           <Link to={`/product/${p._id}`} className="block group cursor-pointer text-left">
-            <div className="w-full h-[180px] sm:h-[240px] md:h-[350px] lg:h-[400px] mb-3 relative flex items-center justify-center bg-transparent">
+            {/* 1. FIXED IMAGE FRAME AND OBJECT-COVER APPLIED FOR BIGGER STRUCTURE LOOK */}
+            <div className="w-full h-[180px] sm:h-[240px] md:h-[350px] lg:h-[400px] mb-3 relative flex items-center justify-center bg-stone-50 overflow-hidden">
               <img 
                 src={currentImage || '/images/placeholder.jpg'} 
                 alt={p.name} 
-                className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-500" 
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                 onError={(e) => { e.target.src = '/images/home/catalogues/kitten/kitten.jpg'; }} 
               />
             </div>
@@ -500,8 +502,6 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
       )}
     </div>
   );
-}
-
 function SizeGuideModal({ onClose }) {
   return (
     <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
