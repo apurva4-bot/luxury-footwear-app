@@ -2,7 +2,6 @@ import React, { useState, useEffect, createContext, useContext } from 'react';
 import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { ShoppingBag, User as UserIcon, Trash2, Pencil, X, Check, Heart, Menu, Ruler, Eye, EyeOff, LogOut } from 'lucide-react';
 import ProductDetailPage from './ProductDetailPage';
-import { Link } from 'react-router-dom';
 
 // Fixed backend server domain
 const API_URL = 'https://luxury-footwear-app.onrender.com';
@@ -349,123 +348,7 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
     } catch (err) { alert("Failed to update"); }
   };
 
- return (
-    <div className="group relative">
-      {showSizeGuide && <SizeGuideModal onClose={() => setShowSizeGuide(false)} />}
-      {showReviews && <ProductReviewsModal p={p} user={user} onClose={() => setShowReviews(false)} />} {/* <-- Add this line */}
-
-      {!isEditing && (
-        <button onClick={handleToggleWishlist} className="absolute top-2 left-2 z-10 p-2 rounded-full bg-white/50 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all hover:bg-white text-stone-400">
-          <Heart size={18} className={inWishlist ? "fill-red-500 text-red-500" : "hover:text-red-500"} />
-        </button>
-      )}
-
-      {user?.role === 'admin' && !isEditing && (
-        <div className="absolute top-2 right-2 flex gap-2 z-10 bg-white/70 p-1 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
-          <button onClick={() => setIsEditing(true)} className="text-stone-500 hover:text-stone-900 p-1"><Pencil size={16} strokeWidth={1.5}/></button>
-          <button onClick={() => handleDelete(p._id)} className="text-red-400 hover:text-red-700 p-1"><Trash2 size={16} strokeWidth={1.5}/></button>
-        </div>
-      )}
-
-      {isEditing ? (
-        <form onSubmit={handleUpdate} className="border border-stone-200 p-4 space-y-3 bg-white">
-          <input type="text" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} className="w-full border p-2 text-sm" required/>
-          <input type="number" value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} className="w-full border p-2 text-sm" required/>
-          <input type="text" value={editForm.image} onChange={e => setEditForm({...editForm, image: e.target.value})} className="w-full border p-2 text-sm" required/>
-          <input type="text" value={editForm.category} onChange={e => setEditForm({...editForm, category: e.target.value})} className="w-full border p-2 text-sm" required/>
-          <input type="text" value={editForm.variantsText} onChange={e => setEditForm({...editForm, variantsText: e.target.value})} className="w-full border p-2 text-sm" placeholder="color|image_url, color|image_url"/>
-          <div className="flex gap-2">
-            <button type="submit" className="flex-1 bg-stone-900 text-white py-2 text-xs uppercase"><Check size={14} className="inline mr-1"/>Save</button>
-            <button type="button" onClick={() => setIsEditing(false)} className="flex-1 bg-stone-100 text-stone-600 py-2 text-xs uppercase"><X size={14} className="inline mr-1"/>Cancel</button>
-          </div>
-        </form>
-      ) : (
-        <>
-        {/* Stripped the rigid aspect ratio and gray background for a seamless luxury layout */}
-{/* This gives the image a square, prominent frame on mobile devices */}
-<div className="w-full h-[180px] sm:h-[240px] md:h-[350px] lg:h-[400px] mb-3 relative flex items-center justify-center bg-transparent">
-  <img 
-    src={currentImage || '/images/placeholder.jpg'} 
-    alt={p.name} 
-    className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-500" 
-    onError={(e) => { e.target.src = '/images/home/catalogues/kitten/kitten.jpg'; }} 
-  />
-</div>
-         {/* Left alignment and minor padding provides a clean, modern Amazon structure */}
-          <div className="text-left px-1 sm:px-0">
-            <div className="mt-2">
-              {/* Line 1: Main Title - Scales down on mobile so it never wraps awkwardly */}
-              <h3 className="text-xs sm:text-base font-semibold text-stone-900 uppercase tracking-wider truncate">
-                {p.name.split(/(?=[a-z])/)[0]?.trim()}
-              </h3>
-              
-              {/* Line 2: Subtitle Description - Clean font-sizes optimized for double columns */}
-              <p className="text-[11px] sm:text-sm text-stone-500 font-medium tracking-wide mt-0.5 mb-2 truncate">
-                {p.name.split(/(?=[a-z])/).slice(1).join('').trim()}
-              </p>
-              
-              {/* Line 3: Price */}
-              <p className="text-stone-950 font-semibold text-sm sm:text-base mb-2">
-                Rs {isNaN(Number(p.price)) ? p.price : Number(p.price).toLocaleString('en-IN')}
-              </p>
-            </div>
-            
-            {/* Form Fields: flex-wrap ensures components don't overflow on mobile screens */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 mb-3">
-               <select value={selectedSize} onChange={e => setSelectedSize(e.target.value)} className="border border-stone-200 text-[11px] sm:text-xs p-2 bg-white text-stone-600 focus:outline-none flex-grow rounded-none">
-                  <option value="">Size (EU)</option>
-                  <option value="36">36</option>
-                  <option value="37">37</option>
-                  <option value="38">38</option>
-                  <option value="39">39</option>
-                  <option value="40">40</option>
-                  <option value="41">41</option>
-               </select>
-               <button onClick={handleAddToCart} className="bg-stone-900 text-white px-3 py-2 text-[10px] uppercase tracking-widest hover:bg-stone-800 transition-colors text-center">
-                  Add to Cart
-               </button>
-            </div>
-
-            <div className="flex justify-between items-center mt-3">
-              {p.variants && p.variants.length > 0 ? (
-                <div className="flex gap-2">
-                  {p.variants.map((variant, idx) => {
-                    const colorMap = {
-                      'cream': '#fdf6e2',
-                      'green': '#3bb87c',
-                      'bloody red': '#990000',
-                      'silver': '#e0e0e0',
-                      'nude': '#e6ba9a',
-                      'pista': '#98ff98',
-                      'peach': '#ffcba4',
-                      'darkest red': '#4a0404',
-                      'mixed red and black': 'linear-gradient(135deg, #cc0000 50%, #000000 50%)',
-                      'mixed brown and nude': 'linear-gradient(135deg, #5c4033 50%, #e6ba9a 50%)',
-                      'polka dots(red ,black )': 'radial-gradient(#000000 20%, transparent 20%) 0 0/6px 6px, radial-gradient(#000000 20%, #cc0000 20%) 3px 3px/6px 6px',
-                      'black': '#000000',
-                      'white': '#ffffff',
-                      'grey': '#808080',
-                      'brown': '#5c4033',
-                      'maroon': '#800000',
-                      'gold': '#ffd900',
-                      'blue': '#1e3d59',
-                      'skyblue': '#87ceeb',
-                      'pink': '#ffb6c1',
-                      'tan': '#d2b48c',
-                      'cheetah': '#ffb700',
-                      'leopard': '#b5651d',
-                      'champagne': '#f7e7ce',
-                      'rose gold': '#b76e79',
-                      'lavender': '#e6e6fa',
-                      'mint': '#aaf0d1',
-                      'charcoal': '#36454f'
-                    };
-
-                    const cleanColorName = variant.color?.toLowerCase().trim();
-                    const finalBgColor = colorMap[cleanColorName] || variant.color || '#ccc';
-                    const isSelected = currentImage === variant.image;
-
-                   return (
+  return (
     <div className="group relative">
       {showSizeGuide && <SizeGuideModal onClose={() => setShowSizeGuide(false)} />}
       {showReviews && <ProductReviewsModal p={p} user={user} onClose={() => setShowReviews(false)} />}
@@ -497,10 +380,8 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
         </form>
       ) : (
         <>
-          {/* LINK WRAPPER STARTS: Clicking the image or titles redirects the user to the details interface */}
+          {/* Visual card content wrapped inside a Link route handler */}
           <Link to={`/product/${p._id}`} className="block group cursor-pointer text-left">
-            
-            {/* The image container frame */}
             <div className="w-full h-[180px] sm:h-[240px] md:h-[350px] lg:h-[400px] mb-3 relative flex items-center justify-center bg-transparent">
               <img 
                 src={currentImage || '/images/placeholder.jpg'} 
@@ -509,31 +390,25 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
                 onError={(e) => { e.target.src = '/images/home/catalogues/kitten/kitten.jpg'; }} 
               />
             </div>
-
-            {/* Left alignment typography */}
+            
             <div className="text-left px-1 sm:px-0">
               <div className="mt-2">
-                {/* Line 1: Main Title */}
                 <h3 className="text-xs sm:text-base font-semibold text-stone-900 uppercase tracking-wider truncate">
                   {p.name.split(/(?=[a-z])/)[0]?.trim()}
                 </h3>
                 
-                {/* Line 2: Subtitle Description */}
                 <p className="text-[11px] sm:text-sm text-stone-500 font-medium tracking-wide mt-0.5 mb-2 truncate">
                   {p.name.split(/(?=[a-z])/).slice(1).join('').trim()}
                 </p>
                 
-                {/* Line 3: Price */}
                 <p className="text-stone-950 font-semibold text-sm sm:text-base mb-2">
                   Rs {isNaN(Number(p.price)) ? p.price : Number(p.price).toLocaleString('en-IN')}
                 </p>
               </div>
             </div>
-
           </Link>
-          {/* LINK WRAPPER ENDS */}
-          
-          {/* Interactive Form Fields and Buttons sit outside the Link so they remain fully interactive */}
+
+          {/* Action container items sit outside the link wrapper to avoid interface collisions */}
           <div className="text-left px-1 sm:px-0">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 mb-3">
                <select value={selectedSize} onChange={e => setSelectedSize(e.target.value)} className="border border-stone-200 text-[11px] sm:text-xs p-2 bg-white text-stone-600 focus:outline-none flex-grow rounded-none">
@@ -600,7 +475,7 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
                     );
                   })}
                 </div>
-              ) : <div className="h-5" />}
+              ) : <div className="h-5" />} 
               
               <div className="flex gap-4">
                 <button 
@@ -625,6 +500,7 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
       )}
     </div>
   );
+}
 
 function SizeGuideModal({ onClose }) {
   return (
@@ -650,6 +526,7 @@ function SizeGuideModal({ onClose }) {
     </div>
   );
 }
+
 function ProductReviewsModal({ p, user, onClose }) {
   const [reviews, setReviews] = useState([]);
   const [rating, setRating] = useState(5);
@@ -658,11 +535,9 @@ function ProductReviewsModal({ p, user, onClose }) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Tries to pull reviews from your Render API endpoint
     fetchAPI(`/products/${p._id}/reviews`)
       .then(res => setReviews(res.reviews || []))
       .catch(() => {
-        // Fallback demo row so your app interface looks functional instantly
         setReviews([
           { _id: 'demo_1', username: 'Ananya S.', rating: 5, comment: 'Absolutely gorgeous heels! The finish shines beautifully under ambient lighting.', image: p.image?.split('|')[0], createdAt: new Date() }
         ]);
@@ -674,7 +549,7 @@ function ProductReviewsModal({ p, user, onClose }) {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImage(reader.result); // Converts raw picture file to a clean text string
+        setImage(reader.result);
       };
       reader.readAsDataURL(file);
     }
@@ -695,7 +570,6 @@ function ProductReviewsModal({ p, user, onClose }) {
       setImage('');
       alert("Thank you for your feedback!");
     } catch (err) {
-      // Offline fallback state so you can see your local submissions right away during development
       setReviews([ { _id: Date.now().toString(), username: user.username || 'Guest Tester', rating, comment, image, createdAt: new Date() }, ...reviews ]);
       setComment('');
       setImage('');
@@ -717,7 +591,6 @@ function ProductReviewsModal({ p, user, onClose }) {
           <p className="text-xs text-stone-500 mt-1 uppercase tracking-wider">{p.name}</p>
         </div>
 
-        {/* Write a Review Section */}
         {user ? (
           <form onSubmit={handleSubmitReview} className="mb-8 bg-stone-50 p-4 border border-stone-200/60 space-y-4">
             <h4 className="text-xs uppercase tracking-widest text-stone-900 font-semibold">Share Your Experience</h4>
@@ -752,47 +625,43 @@ function ProductReviewsModal({ p, user, onClose }) {
                 {image && (
                   <div className="w-10 h-10 border border-stone-200 overflow-hidden relative">
                     <img src={image} alt="Preview" className="w-full h-full object-cover" />
-                    <button type="button" onClick={() => setImage('')} className="absolute inset-0 bg-black/40 text-white flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                      <X size={12} />
-                    </button>
                   </div>
                 )}
               </div>
 
-              <button type="submit" disabled={loading} className="bg-stone-900 text-white px-6 py-2 text-[10px] uppercase tracking-widest hover:bg-stone-800 disabled:bg-stone-400 transition-colors">
-                {loading ? "Publishing..." : "Submit Review"}
+              <button type="submit" disabled={loading} className="bg-stone-900 text-white px-6 py-2 text-[11px] uppercase tracking-widest hover:bg-stone-800 disabled:bg-stone-400 transition-colors">
+                {loading ? 'Submitting...' : 'Post Review'}
               </button>
             </div>
           </form>
         ) : (
-          <p className="text-center text-xs text-stone-400 uppercase tracking-wider mb-8 py-2 bg-stone-50 border border-stone-100">
-            Please register or sign in to leave a review with a photo.
+          <p className="text-xs text-stone-500 text-center mb-6 py-2 border border-dashed border-stone-200">
+            Please log in to leave a review for these luxury footwear choices.
           </p>
         )}
 
-        {/* Display Current Reviews Feed */}
-        <div className="space-y-6 border-t border-stone-100 pt-6">
+        <div className="space-y-6">
           {reviews.length === 0 ? (
-            <p className="text-center text-stone-400 text-xs tracking-wide py-4">No verified reviews yet for this model.</p>
+            <p className="text-stone-400 text-xs text-center py-4">No reviews posted yet for this layout variant.</p>
           ) : (
             reviews.map((rev) => (
-              <div key={rev._id} className="flex flex-col sm:flex-row justify-between items-start gap-4 pb-6 border-b border-stone-100 last:border-0">
-                <div className="space-y-1.5 max-w-md">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-stone-900 tracking-wide">{rev.username}</span>
-                    <div className="text-amber-500 text-xs">
-                      {'★'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}
+              <div key={rev._id} className="border-b border-stone-100 pb-6 last:border-0">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <h5 className="text-xs font-semibold text-stone-900 uppercase tracking-wider">{rev.username}</h5>
+                    <div className="text-amber-500 text-xs mt-0.5">
+                      {Array.from({ length: rev.rating }).map((_, i) => <span key={i}>★</span>)}
+                      {Array.from({ length: 5 - rev.rating }).map((_, i) => <span key={i} className="text-stone-200">★</span>)}
                     </div>
                   </div>
-                  <p className="text-stone-600 text-xs leading-relaxed font-light">{rev.comment}</p>
-                  <span className="text-[9px] text-stone-400 block tracking-tight">
-                    Verified Purchase • {new Date(rev.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  <span className="text-[10px] text-stone-400">
+                    {new Date(rev.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </span>
                 </div>
-                
+                <p className="text-stone-600 text-xs leading-relaxed italic">"{rev.comment}"</p>
                 {rev.image && (
-                  <div className="w-24 h-24 sm:w-20 sm:h-20 border border-stone-200 overflow-hidden shrink-0 bg-stone-50 flex items-center justify-center">
-                    <img src={rev.image} alt="User upload" className="max-w-full max-h-full object-contain hover:scale-110 transition-transform duration-300" />
+                  <div className="mt-3 w-20 h-24 bg-stone-50 border border-stone-100 rounded-sm overflow-hidden flex items-center justify-center">
+                    <img src={rev.image} alt="User upload" className="max-w-full max-h-full object-contain" />
                   </div>
                 )}
               </div>
@@ -803,400 +672,3 @@ function ProductReviewsModal({ p, user, onClose }) {
     </div>
   );
 }
-function Auth() {
-  const [authMethod, setAuthMethod] = useState('username');
-  const [isLogin, setIsLogin] = useState(true);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [phone, setPhone] = useState('');
-  const [otpCode, setOtpCode] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-  
-  const { setUser, setCart, setWishlist } = useContext(AppContext);
-  const navigate = useNavigate();
-
-  const handleUsernameAuth = async (e) => {
-    e.preventDefault();
-    if (!isLogin) {
-      const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
-      if (!gmailRegex.test(username.trim())) {
-        alert("Registration Restricted: You must register using a valid @gmail.com address.");
-        return;
-      }
-    }
-    try {
-      const endpoint = isLogin ? '/auth/login' : '/auth/signup';
-      const res = await fetchAPI(endpoint, { method: 'POST', body: JSON.stringify({ username, password }) });
-      saveSession(res);
-    } catch (err) { alert(err.message || "Authentication failed"); }
-  };
-
-  const handleRequestOtp = async (e) => {
-    e.preventDefault();
-    if (!phone) return alert("Please enter your phone number");
-    try {
-      const res = await fetchAPI('/auth/send-otp', { method: 'POST', body: JSON.stringify({ phone }) });
-      setOtpSent(true);
-      alert(`OTP Sent! (For testing, your code is: ${res.debugOtp})`);
-    } catch (err) { alert("Failed to send OTP"); }
-  };
-
-  const handleVerifyOtp = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await fetchAPI('/auth/verify-otp', { method: 'POST', body: JSON.stringify({ phone, code: otpCode }) });
-      saveSession(res);
-    } catch (err) { alert("Invalid OTP code. Try again."); }
-  };
-
-  const saveSession = (res) => {
-    localStorage.setItem('token', res.token);
-    localStorage.setItem('user_details', JSON.stringify(res.user));
-    setUser(res.user);
-    setCart(res.user.cart || []);
-    setWishlist(res.user.wishlist || []);
-    alert("Logged in successfully!");
-    navigate('/');
-  };
-
-  return (
-    <div className="bg-white border border-stone-200 p-8 shadow-sm">
-      <div className="flex border-b border-stone-200 mb-6 text-xs uppercase tracking-widest font-medium">
-        <button type="button" onClick={() => { setAuthMethod('username'); setOtpSent(false); }} className={`flex-1 pb-3 text-center ${authMethod === 'username' ? 'border-b-2 border-stone-900 text-stone-900' : 'text-stone-400'}`}>
-          Username Login
-        </button>
-        <button type="button" onClick={() => setAuthMethod('phone')} className={`flex-1 pb-3 text-center ${authMethod === 'phone' ? 'border-b-2 border-stone-900 text-stone-900' : 'text-stone-400'}`}>
-          Phone OTP Login
-        </button>
-      </div>
-
-      {authMethod === 'username' ? (
-        <form onSubmit={handleUsernameAuth} className="space-y-5">
-          <div>
-            <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Username / Gmail</label>
-            <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="yourname@gmail.com" className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" required />
-          </div>
-          <div>
-            <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Password</label>
-            <div className="relative">
-              <input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} className="w-full border border-stone-200 p-3 pr-10 text-sm focus:outline-none focus:border-stone-900" required />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-900">
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </div>
-          <button type="submit" className="w-full bg-stone-900 text-white py-3 text-xs uppercase tracking-widest hover:bg-stone-800 transition-colors">
-            {isLogin ? "Sign In" : "Register"}
-          </button>
-          <div className="text-center pt-2">
-            <button type="button" onClick={() => setIsLogin(!isLogin)} className="text-[11px] text-stone-400 hover:text-stone-900 underline underline-offset-4">
-              {isLogin ? "Need an account? Sign up here" : "Have an account? Log in here"}
-            </button>
-          </div>
-        </form>
-      ) : (
-        <div className="space-y-5">
-          {!otpSent ? (
-            <form onSubmit={handleRequestOtp} className="space-y-4">
-              <div>
-                <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Mobile Phone Number</label>
-                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="Enter mobile number" className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" required />
-              </div>
-              <button type="submit" className="w-full bg-stone-900 text-white py-3 text-xs uppercase tracking-widest hover:bg-stone-800 transition-colors">
-                Send OTP
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handleVerifyOtp} className="space-y-4">
-              <div>
-                <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Enter 6-Digit OTP</label>
-                <input type="text" value={otpCode} onChange={e => setOtpCode(e.target.value)} maxLength={6} placeholder="000000" className="w-full border border-stone-200 p-3 text-center text-lg tracking-widest focus:outline-none focus:border-stone-900 font-mono" required />
-              </div>
-              <button type="submit" className="w-full bg-stone-900 text-white py-3 text-xs uppercase tracking-widest hover:bg-stone-800 transition-colors">
-                Verify OTP
-              </button>
-            </form>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Cart() {
-  const { cart, setCart, user } = useContext(AppContext);
-  const navigate = useNavigate();
-
-  const handleUpdateQuantity = async (productId, size, currentQty, delta) => {
-    const newQty = currentQty + delta;
-    if (newQty <= 0) {
-      handleRemoveItem(productId, size);
-      return;
-    }
-    try {
-      const res = await fetchAPI('/cart', {
-        method: 'POST',
-        body: JSON.stringify({ action: 'add', productId, size, quantity: delta })
-      });
-      setCart(res.cart || []);
-    } catch (err) {
-      alert("Failed to update quantity");
-    }
-  };
-
-  const handleRemoveItem = async (productId, size) => {
-    try {
-      const res = await fetchAPI('/cart', {
-        method: 'POST',
-        body: JSON.stringify({ action: 'remove', productId, size })
-      });
-      setCart(res.cart || []);
-    } catch (err) {
-      alert("Failed to remove item");
-    }
-  };
-
-  const calculateTotal = () => {
-    return cart.reduce((acc, item) => {
-      const price = item.product?.price || 0;
-      return acc + (price * (item.quantity || 1));
-    }, 0);
-  };
-
-  if (!user) {
-    return (
-      <div className="text-center py-24">
-        <p className="text-stone-500 mb-6 font-light uppercase tracking-widest">Please sign in to view your shopping cart</p>
-        <Link to="/auth" className="bg-stone-900 text-white px-8 py-3 text-xs uppercase tracking-widest hover:bg-stone-800 transition-colors">Sign In</Link>
-      </div>
-    );
-  }
-
-  return (
-    <div className="max-w-4xl mx-auto py-12">
-      <h2 className="text-2xl font-light uppercase tracking-widest text-center mb-16">Your Shopping Bag</h2>
-      {cart.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-stone-400 font-light mb-8">Your cart is currently empty.</p>
-          <Link to="/" className="border border-stone-900 text-stone-900 px-8 py-3 text-xs uppercase tracking-widest hover:bg-stone-900 hover:text-white transition-all">Continue Shopping</Link>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-          <div className="lg:col-span-2 space-y-6">
-            {cart.map((item, idx) => {
-              const p = item.product || {};
-              const mainImg = p.image ? p.image.split('|')[0]?.trim() : '/images/placeholder.jpg';
-              return (
-                <div key={idx} className="flex gap-6 border-b border-stone-100 pb-6 items-center">
-                  <div className="w-24 h-30 bg-stone-100 overflow-hidden flex-shrink-0">
-                    <img src={mainImg} alt={p.name} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="flex-grow">
-                    <h3 className="text-sm font-semibold uppercase tracking-wider text-stone-900">{p.name?.split(/(?=[a-z])/)[0]?.trim()}</h3>
-                    <p className="text-xs text-stone-500 mt-0.5">{p.name?.split(/(?=[a-z])/).slice(1).join('').trim()}</p>
-                    <p className="text-xs text-stone-400 mt-2">Size: <span className="text-stone-900 font-medium">{item.size}</span></p>
-                    <div className="flex items-center gap-3 mt-4">
-                      <button onClick={() => handleUpdateQuantity(p._id, item.size, item.quantity, -1)} className="border border-stone-200 w-6 h-6 flex items-center justify-center text-stone-600 hover:border-stone-900 text-xs">-</button>
-                      <span className="text-xs font-medium font-mono">{item.quantity}</span>
-                      <button onClick={() => handleUpdateQuantity(p._id, item.size, item.quantity, 1)} className="border border-stone-200 w-6 h-6 flex items-center justify-center text-stone-600 hover:border-stone-900 text-xs">+</button>
-                    </div>
-                  </div>
-                  <div className="text-right flex flex-col justify-between h-full py-2">
-                    <p className="text-sm font-semibold text-stone-900">Rs {((p.price || 0) * (item.quantity || 1)).toLocaleString('en-IN')}</p>
-                    <button onClick={() => handleRemoveItem(p._id, item.size)} className="text-stone-400 hover:text-red-600 mt-4 self-end"><Trash2 size={16} strokeWidth={1.5} /></button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div className="bg-stone-50 p-8 h-fit border border-stone-100">
-            <h3 className="text-xs font-semibold uppercase tracking-widest mb-6 text-stone-900">Order Summary</h3>
-            <div className="flex justify-between text-sm border-b border-stone-200 pb-4 mb-4">
-              <span className="text-stone-500">Subtotal</span>
-              <span className="font-semibold text-stone-900">Rs {calculateTotal().toLocaleString('en-IN')}</span>
-            </div>
-            <div className="flex justify-between text-sm mb-6">
-              <span className="text-stone-500">Shipping</span>
-              <span className="text-stone-900 uppercase text-xs tracking-wider font-medium">Complimentary</span>
-            </div>
-            <div className="flex justify-between text-base font-semibold border-t border-stone-200 pt-4 mb-8">
-              <span>Total</span>
-              <span>Rs {calculateTotal().toLocaleString('en-IN')}</span>
-            </div>
-            <button onClick={() => alert("Checkout system integration coming soon!")} className="w-full bg-stone-900 text-white py-4 uppercase tracking-widest text-xs hover:bg-stone-800 transition-colors font-medium">Proceed to Checkout</button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Wishlist() {
-  const { wishlist, setWishlist, user } = useContext(AppContext);
-  const navigate = useNavigate();
-
-  const handleRemoveWishlist = async (productId) => {
-    try {
-      const res = await fetchAPI('/wishlist', { method: 'POST', body: JSON.stringify({ action: 'remove', productId }) });
-      setWishlist(res.wishlist || []);
-    } catch (err) { alert("Error updating wishlist"); }
-  };
-
-  if (!user) {
-    return (
-      <div className="text-center py-24">
-        <p className="text-stone-500 mb-6 font-light uppercase tracking-widest">Please sign in to view your wishlist</p>
-        <Link to="/auth" className="bg-stone-900 text-white px-8 py-3 text-xs uppercase tracking-widest hover:bg-stone-800 transition-colors">Sign In</Link>
-      </div>
-    );
-  }
-
-  return (
-    <div className="py-12">
-      <h2 className="text-2xl font-light uppercase tracking-widest text-center mb-16">Your Curated Wishlist</h2>
-      {wishlist.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-stone-400 font-light mb-8">Your wishlist is empty.</p>
-          <Link to="/" className="border border-stone-900 text-stone-900 px-8 py-3 text-xs uppercase tracking-widest hover:bg-stone-900 hover:text-white transition-all">Explore Collections</Link>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 gap-x-2 gap-y-8 md:grid-cols-3 lg:grid-cols-4 px-1"> 
-          {wishlist.map(p => {
-            const mainImg = p.image ? p.image.split('|')[0]?.trim() : '/images/placeholder.jpg';
-            return (
-              <div key={p._id} className="group relative bg-white border border-stone-100 p-2">
-                <button onClick={() => handleRemoveWishlist(p._id)} className="absolute top-4 right-4 z-10 p-1.5 rounded-full bg-white/80 text-stone-400 hover:text-red-500 transition-colors shadow-sm">
-                  <X size={16} />
-                </button>
-                <div className="aspect-[4/5] bg-stone-100 overflow-hidden mb-4">
-                  <img src={mainImg} alt={p.name} className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold uppercase tracking-wider text-stone-900">{p.name?.split(/(?=[a-z])/)[0]?.trim()}</h3>
-                  <p className="text-xs text-stone-500 min-h-[32px] mt-0.5">{p.name?.split(/(?=[a-z])/).slice(1).join('').trim()}</p>
-                  <p className="text-sm font-semibold text-stone-950 mt-2 mb-4">Rs {Number(p.price).toLocaleString('en-IN')}</p>
-                  <button onClick={() => navigate('/')} className="w-full bg-stone-950 text-white text-[10px] uppercase tracking-widest py-2.5 hover:bg-stone-800 transition-colors">View Product</button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Admin() {
-  const { user } = useContext(AppContext);
-  const [form, setForm] = useState({ name: '', price: '', image: '', category: 'luxury', variantsText: '' });
-  const [allProducts, setAllProducts] = useState([]);
-  const [activeTab, setActiveTab] = useState('add');
-
-  useEffect(() => {
-    if (user?.role === 'admin') {
-      fetchAPI('/products').then(setAllProducts).catch(console.error);
-    }
-  }, [user]);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const variantsArray = form.variantsText ? form.variantsText.split(',').map(v => {
-        const parts = v.split('|');
-        return { color: parts[0]?.trim(), image: parts[1]?.trim() };
-      }).filter(v => v.color && v.image) : [];
-
-      await fetchAPI('/products', {
-        method: 'POST',
-        body: JSON.stringify({ ...form, price: Number(form.price), variants: variantsArray })
-      });
-      alert("Product created beautifully!");
-      setForm({ name: '', price: '', image: '', category: 'luxury', variantsText: '' });
-      fetchAPI('/products').then(setAllProducts).catch(console.error);
-    } catch (err) {
-      alert("Failed to create product");
-    }
-  };
-
-  if (user?.role !== 'admin') {
-    return (
-      <div className="text-center py-24 text-stone-500 uppercase tracking-widest text-sm font-light">
-        Access Denied. Credentials Required.
-      </div>
-    );
-  }
-
-  return (
-    <div className="py-8 max-w-4xl mx-auto">
-      <div className="text-center mb-12">
-        <h2 className="text-2xl font-light uppercase tracking-widest text-stone-900">Admin Console</h2>
-        <p className="text-stone-400 text-xs uppercase tracking-wider mt-2">RAWLES HEELS Asset Configuration</p>
-      </div>
-
-      <div className="flex justify-center gap-6 mb-12 text-xs uppercase tracking-widest border-b border-stone-200 pb-3 font-medium">
-        <button onClick={() => setActiveTab('add')} className={activeTab === 'add' ? "text-stone-900 border-b-2 border-stone-900 pb-3" : "text-stone-400"}>Add New Product</button>
-        <button onClick={() => setActiveTab('view')} className={activeTab === 'view' ? "text-stone-900 border-b-2 border-stone-900 pb-3" : "text-stone-400"}>Inventory Overview ({allProducts.length})</button>
-      </div>
-
-      {activeTab === 'add' ? (
-        <form onSubmit={handleSubmit} className="bg-white border border-stone-200 p-8 space-y-6 shadow-sm max-w-xl mx-auto">
-          <div>
-            <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Product Name</label>
-            <input type="text" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" required />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Price (INR)</label>
-              <input type="number" value={form.price} onChange={e => setForm({...form, price: e.target.value})} className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" required />
-            </div>
-            <div>
-              <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Category Placement</label>
-              <select value={form.category} onChange={e => setForm({...form, category: e.target.value})} className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900 bg-white">
-                <option value="luxury">Trending Arrivals (Luxury)</option>
-                <option value="bellis">Bellis</option>
-                <option value="stiletto">Stiletto</option>
-                <option value="wedges">Wedges</option>
-                <option value="platform">Platform</option>
-                <option value="kitten">Kitten</option>
-                <option value="summer">Summer Special</option>
-                <option value="casual">Casual Wear</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Primary Image Catalog URL</label>
-            <input type="text" value={form.image} onChange={e => setForm({...form, image: e.target.value})} placeholder="/images/home/catalogues/..." className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900" required />
-          </div>
-          <div>
-            <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-2">Complex Variants Mapping (Optional)</label>
-            <textarea value={form.variantsText} onChange={e => setForm({...form, variantsText: e.target.value})} placeholder="bloody red|/url1, mixed red and black|/url2, polka dots(red ,black )|/url3" className="w-full border border-stone-200 p-3 text-sm focus:outline-none focus:border-stone-900 h-24 font-mono text-xs" />
-            <p className="text-[10px] text-stone-400 mt-1">Format: color|url, color|url (comma separated)</p>
-          </div>
-          <button type="submit" className="w-full bg-stone-900 text-white py-3.5 text-xs uppercase tracking-widest hover:bg-stone-800 transition-colors font-medium">Publish to Showroom</button>
-        </form>
-      ) : (
-        <div className="overflow-x-auto border border-stone-200 bg-white shadow-sm">
-          <table className="w-full text-sm text-left text-stone-600">
-            <thead className="text-[10px] uppercase tracking-widest bg-stone-50 text-stone-400 border-b border-stone-200">
-              <tr>
-                <th className="p-4">Product</th>
-                <th className="p-4">Category</th>
-                <th className="p-4 text-right">Price</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100">
-              {allProducts.map(item => (
-                <tr key={item._id} className="hover:bg-stone-50/50">
-                  <td className="p-4 font-medium text-stone-900">{item.name}</td>
-                  <td className="p-4 uppercase text-xs tracking-wider text-stone-500">{item.category || 'luxury'}</td>
-                  <td className="p-4 text-right font-mono text-stone-900">Rs {Number(item.price).toLocaleString('en-IN')}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-} 
