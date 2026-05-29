@@ -273,7 +273,7 @@ function Products({ category, title }) {
   return (
     <div>
       <h2 className="text-2xl font-light mb-12 uppercase tracking-widest text-center">{title}</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-10">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-10 md:grid-cols-3"> 
         {displayedProducts.map(p => (
           <ProductCard key={p._id} p={p} user={user} handleDelete={handleDelete} fetchProducts={fetchProducts} navigate={navigate} setCart={setCart} />
         ))}
@@ -379,7 +379,7 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
       ) : (
         <>
         {/* Stripped the rigid aspect ratio and gray background for a seamless luxury layout */}
-<div className="w-full h-[400px] mb-4 relative flex items-center justify-center bg-transparent">
+<div className="w-full h-[180px] sm:h-[260px] md:h-[400px] mb-4 relative flex items-center justify-center bg-transparent">
   <img 
     src={currentImage || '/images/placeholder.jpg'} 
     alt={p.name} 
