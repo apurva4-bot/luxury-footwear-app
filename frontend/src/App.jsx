@@ -446,7 +446,7 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
                       onClick={() => v.image && setCurrentImage(v.image)} 
                       title={v.color || 'Variant'}
                       className="w-4 h-4 rounded-full border border-stone-300 hover:scale-110 hover:border-stone-800 transition-all shadow-sm focus:outline-none"
-                      style={{ backgroundColor: v.color?.toLowerCase() || '#ccc' }}
+                      style={{ backgroundColor: v.color?.toLowerCase().trim() || '#ccc' }}
                     />
                   ))}
                 </div>
