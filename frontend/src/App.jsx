@@ -485,7 +485,7 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
       {/* Conditional Modal Displays */}
       {showSizeGuide && <SizeGuideModal onClose={() => setShowSizeGuide(false)} />}
       {showReviews && <ProductReviewsModal p={p} user={user} onClose={() => setShowReviews(false)} />}
-    </div>
+    </>
   );
 }
 
