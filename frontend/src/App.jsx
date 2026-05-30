@@ -378,17 +378,17 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
 
   return (
     <div className="bg-white border border-stone-100 p-2 flex flex-col justify-between relative group shadow-sm hover:shadow-md transition-shadow">
-      {/* Action Overlay Controls */}
+      {/* Absolute Header Overlay Icons */}
       <div className="absolute top-3 right-3 z-30 flex flex-col gap-2">
         <button onClick={handleToggleWishlist} className={`p-1.5 rounded-full bg-white/90 border border-stone-100 shadow-sm transition-colors ${inWishlist ? 'text-red-500' : 'text-stone-400 hover:text-stone-900'}`}>
           <Heart size={15} fill={inWishlist ? "currentColor" : "none"} strokeWidth={2} />
         </button>
         {user?.role === 'admin' && (
           <>
-            <button type="button" onClick={() => setIsEditing(!isEditing)} className="p-1.5 rounded-full bg-white/90 border border-stone-100 shadow-sm text-stone-500 hover:text-stone-900">
+            <button onClick={() => setIsEditing(!isEditing)} className="p-1.5 rounded-full bg-white/90 border border-stone-100 shadow-sm text-stone-500 hover:text-stone-900">
               <Pencil size={13} />
             </button>
-            <button type="button" onClick={() => handleDelete(p._id)} className="p-1.5 rounded-full bg-white/90 border border-stone-100 shadow-sm text-stone-500 hover:text-red-600">
+            <button onClick={() => handleDelete(p._id)} className="p-1.5 rounded-full bg-white/90 border border-stone-100 shadow-sm text-stone-500 hover:text-red-600">
               <Trash2 size={13} />
             </button>
           </>
@@ -417,46 +417,44 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
           </div>
         </form>
       ) : (
-        <div className="flex flex-col h-full justify-between">
-          <div>
-            {/* Clickable Product Image Showcase Frame */}
-            <Link to={`/product/${p._id}`} className="block w-full bg-stone-50 border border-stone-50 overflow-hidden relative aspect-square group">
-              <img 
-                src={currentImage} 
-                alt={p.name} 
-                className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-500" 
-              />
-            </Link>
+        <>
+          {/* MODIFICATION 1: Linked presentation frame connecting directly to Standalone Detail Page View */}
+          <Link to={`/product/${p._id}`} className="block w-full bg-stone-50 border border-stone-50 overflow-hidden relative aspect-square group">
+            <img 
+              src={currentImage} 
+              alt={p.name} 
+              className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-500" 
+            />
+          </Link>
 
-            {/* Product Meta Details */}
-            <div className="text-left mt-3">
-              <Link to={`/product/${p._id}`} className="block hover:opacity-80">
+          {/* Text and Controls Blocks */}
+          <div className="text-left mt-3 flex-grow flex flex-col justify-between">
+            <div>
+              <Link to={`/product/${p._id}`} className="block group-hover:opacity-80">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-900 truncate">{mainTitle}</h3>
                 {subtitle && <p className="text-[10px] text-stone-500 tracking-wide mt-0.5 truncate">{subtitle}</p>}
               </Link>
               <p className="text-stone-900 font-bold text-xs mt-1">Rs {Number(p.price).toLocaleString('en-IN')}</p>
               
-              {/* Product Variant Color Interactive Circles */}
               {p.variants && p.variants.length > 0 && (
-                <div className="flex gap-2 mt-2 mb-1 items-center">
+                <div className="flex gap-1 mt-2 mb-1 overflow-x-auto no-scrollbar">
                   {p.variants.map((v, idx) => (
                     <button 
                       key={idx} 
-                      type="button"
                       onClick={() => v.image && setCurrentImage(v.image)} 
-                      title={v.color || 'Variant'}
-                      className="w-4 h-4 rounded-full border border-stone-300 hover:scale-110 hover:border-stone-800 transition-all shadow-sm focus:outline-none"
-                      style={{ backgroundColor: v.color?.toLowerCase().trim() || '#ccc' }}
-                    />
+                      className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 bg-stone-100 border border-stone-200 hover:border-stone-800 transition-colors whitespace-nowrap text-stone-600 font-medium scale-95"
+                    >
+                      {v.color || 'Var'}
+                    </button>
                   ))}
                 </div>
               )}
 
-              {/* Sizing Interface Option Dashboard */}
+              {/* Sizes Box Engine Selector Grid */}
               <div className="mt-3">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-[9px] uppercase tracking-widest text-stone-400 font-semibold">Select Size</span>
-                  <button type="button" onClick={() => setShowSizeGuide(true)} className="text-[9px] uppercase text-stone-500 underline tracking-widest flex items-center gap-0.5 hover:text-stone-900">
+                  <button onClick={() => setShowSizeGuide(true)} className="text-[9px] uppercase text-stone-500 underline tracking-widest flex items-center gap-0.5 hover:text-stone-900">
                     <Ruler size={10} /> Guide
                   </button>
                 </div>
@@ -464,7 +462,6 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
                   {["36", "37", "38", "39", "40"].map(size => (
                     <button 
                       key={size} 
-                      type="button"
                       onClick={() => setSelectedSize(size)} 
                       className={`border text-[10px] py-1 text-center font-medium transition-colors ${selectedSize === size ? 'bg-stone-900 text-white border-stone-900' : 'border-stone-200 text-stone-700 bg-stone-50/50 hover:border-stone-400'}`}
                     >
@@ -474,23 +471,25 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Core Interactive Action Group Buttons */}
-          <div className="mt-4 pt-2 border-t border-stone-100/80 space-y-1.5">
-            <button type="button" onClick={handleAddToCart} className="w-full bg-stone-900 text-white py-2 text-[10px] uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors">
-              Add To Bag
-            </button>
-            <button type="button" onClick={() => setShowReviews(true)} className="w-full bg-stone-50 text-stone-700 border border-stone-200/80 py-1.5 text-[9px] uppercase tracking-widest font-medium hover:bg-stone-100 transition-colors flex items-center justify-center gap-1">
-              ★ View Reviews
-            </button>
+            {/* Core CTA Action Bars */}
+            <div className="mt-4 pt-2 border-t border-stone-100/80 space-y-1.5">
+              <button onClick={handleAddToCart} className="w-full bg-stone-900 text-white py-2 text-[10px] uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors">
+                Add To Bag
+              </button>
+              <button onClick={() => setShowReviews(true)} className="w-full bg-stone-50 text-stone-700 border border-stone-200/80 py-1.5 text-[9px] uppercase tracking-widest font-medium hover:bg-stone-100 transition-colors flex items-center justify-center gap-1">
+                ★ View Reviews
+              </button>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
-      {/* Embedded Modal Presentation Triggers */}
+      {/* Conditional Modal Displays */}
       {showSizeGuide && <SizeGuideModal onClose={() => setShowSizeGuide(false)} />}
       {showReviews && <ProductReviewsModal p={p} user={user} onClose={() => setShowReviews(false)} />}
     </div>
   );
 }
+
+// ... SizeGuideModal and rest of the file stays down below
