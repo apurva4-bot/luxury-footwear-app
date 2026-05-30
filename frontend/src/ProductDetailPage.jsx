@@ -8,14 +8,17 @@ function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   
-  // Extracting products directly from context
-  const { products } = useContext(AppContext);
+  // Extracting products, user session info, and cart dispatcher from context
+  const { products, user, setCart } = useContext(AppContext);
   
   // Find the unique item matching the URL parameter
   const product = products?.find((p) => p._id === id);
 
   // Image viewer state tracker
   const [activeImage, setActiveImage] = useState('');
+  
+  // NEW STATE: Track user's shoe size choice
+  const [selectedSize, setSelectedSize] = useState('');
 
   // Extract all available images (handles both arrays and pipe-separated strings)
   const getImageList = () => {
@@ -39,6 +42,46 @@ function ProductDetailPage() {
       setActiveImage(allImages[0]);
     }
   }, [product]);
+
+  // NEW FUNCTION: Handle Cart Submission to Backend
+  const handleAddToCart = async () => {
+    if (!user) {
+      // Redirect to login if user isn't authenticated
+      return navigate('/auth');
+    }
+    
+    if (!selectedSize) {
+      alert("Please select your shoe size before adding to cart!");
+      return;
+    }
+
+    try {
+      // Replicating helper token/visitor architecture from main module
+      const token = localStorage.getItem('token');
+      const response = await fetch('https://luxury-footwear-app.onrender.com/api/cart', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+          'x-visitor-id': localStorage.getItem('visitor_id') || ''
+        },
+        body: JSON.stringify({
+          action: 'add',
+          productId: product._id,
+          size: selectedSize
+        })
+      });
+
+      if (!response.ok) throw new Error(await response.text());
+      
+      const data = await response.json();
+      setCart(data.cart); // Update global cart count in Navbar instantly
+      alert(`Successfully added Size ${selectedSize} to your shopping bag!`);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update shopping bag. Please try again.");
+    }
+  };
 
   if (!product) {
     return (
@@ -125,12 +168,16 @@ function ProductDetailPage() {
               Handcrafted with exceptional premium luxury detailing. Features custom-molded interior footbeds optimized for incredible comfort and sophisticated styling.
             </p>
 
-            {/* Size Dropdown Picker */}
+            {/* Size Dropdown Picker - WIRED WITH VALUE STATE */}
             <div className="mb-6 max-w-xs">
               <label className="block text-xs uppercase tracking-widest font-semibold text-stone-700 mb-2">
                 Select Size (EU)
               </label>
-              <select className="w-full border border-stone-300 bg-white p-3 text-xs tracking-wider uppercase focus:outline-none focus:border-stone-900">
+              <select 
+                value={selectedSize}
+                onChange={(e) => setSelectedSize(e.target.value)}
+                className="w-full border border-stone-300 bg-white p-3 text-xs tracking-wider uppercase focus:outline-none focus:border-stone-900"
+              >
                 <option value="">Choose Size</option>
                 <option value="36">EU 36</option>
                 <option value="37">EU 37</option>
@@ -141,9 +188,12 @@ function ProductDetailPage() {
               </select>
             </div>
 
-            {/* Action CTA */}
+            {/* Action CTA - WIRED WITH CLICK ACTION */}
             <div className="mt-2">
-              <button className="w-full bg-stone-900 text-white py-4 text-xs uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors">
+              <button 
+                onClick={handleAddToCart}
+                className="w-full bg-stone-900 text-white py-4 text-xs uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors"
+              >
                 Add To Bag
               </button>
             </div>
