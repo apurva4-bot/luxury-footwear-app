@@ -115,7 +115,7 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
               className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-500" 
             />
           </Link>
-
+ 
           {/* Text and Controls Blocks */}
           <div className="text-left mt-3 flex-grow flex flex-col justify-between">
             <div>
