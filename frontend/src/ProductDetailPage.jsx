@@ -1,4 +1,24 @@
-function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }) {
+import React, { useState, useEffect, useContext } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { Heart, Pencil, Trash2, Ruler, Star, X, ShoppingBag, ArrowLeft } from 'lucide-react';
+import { AppContext } from './App';
+
+// Fixed backend server domain helper
+const API_URL = 'https://luxury-footwear-app.onrender.com';
+
+const fetchAPI = async (endpoint, options = {}) => {
+  const token = localStorage.getItem('token');
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` }),
+    ...options.headers
+  };
+  const response = await fetch(`${API_URL}/api${endpoint}`, { ...options, headers });
+  if (!response.ok) throw new Error(await response.text());
+  return response.json();
+};
+
+export function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }) {
   const [isEditing, setIsEditing] = useState(false);
   const imageUrls = p.image ? p.image.split('|').map(url => url.trim()).filter(Boolean) : [];
   const [currentImage, setCurrentImage] = useState('');
@@ -67,7 +87,6 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
 
   return (
     <div className="bg-white border border-stone-100 p-2 flex flex-col justify-between relative group shadow-sm hover:shadow-md transition-shadow">
-      {/* Absolute Header Overlay Icons */}
       <div className="absolute top-3 right-3 z-30 flex flex-col gap-2">
         <button onClick={handleToggleWishlist} className={`p-1.5 rounded-full bg-white/90 border border-stone-100 shadow-sm transition-colors ${inWishlist ? 'text-red-500' : 'text-stone-400 hover:text-stone-900'}`}>
           <Heart size={15} fill={inWishlist ? "currentColor" : "none"} strokeWidth={2} />
@@ -107,7 +126,6 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
         </form>
       ) : (
         <>
-          {/* Modification 1 Dynamic Navigation Linked Frame */}
           <Link to={`/product/${p._id}`} className="block w-full bg-stone-50 border border-stone-50 overflow-hidden relative aspect-square group">
             <img 
               src={currentImage} 
@@ -116,7 +134,6 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
             />
           </Link>
  
-          {/* Text and Controls Blocks */}
           <div className="text-left mt-3 flex-grow flex flex-col justify-between">
             <div>
               <Link to={`/product/${p._id}`} className="block group-hover:opacity-80">
@@ -125,12 +142,12 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
               </Link>
               <p className="text-stone-900 font-bold text-xs mt-1">Rs {Number(p.price).toLocaleString('en-IN')}</p>
               
-              {/* RESTORED VISUAL COLOR CIRCLES */}
               {p.variants && p.variants.length > 0 && (
                 <div className="flex gap-2 mt-2 mb-1 items-center">
                   {p.variants.map((v, idx) => (
                     <button 
                       key={idx} 
+                      type="button"
                       onClick={() => v.image && setCurrentImage(v.image)} 
                       title={v.color || 'Variant'}
                       className="w-4 h-4 rounded-full border border-stone-300 hover:scale-110 hover:border-stone-800 transition-all shadow-sm focus:outline-none"
@@ -140,11 +157,10 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
                 </div>
               )}
 
-              {/* Sizes Selector Grid Layout - Intact with Guide */}
               <div className="mt-3">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-[9px] uppercase tracking-widest text-stone-400 font-semibold">Select Size</span>
-                  <button onClick={() => setShowSizeGuide(true)} className="text-[9px] uppercase text-stone-500 underline tracking-widest flex items-center gap-0.5 hover:text-stone-900">
+                  <button type="button" onClick={() => setShowSizeGuide(true)} className="text-[9px] uppercase text-stone-500 underline tracking-widest flex items-center gap-0.5 hover:text-stone-900">
                     <Ruler size={10} /> Guide
                   </button>
                 </div>
@@ -152,6 +168,7 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
                   {["36", "37", "38", "39", "40"].map(size => (
                     <button 
                       key={size} 
+                      type="button"
                       onClick={() => setSelectedSize(size)} 
                       className={`border text-[10px] py-1 text-center font-medium transition-colors ${selectedSize === size ? 'bg-stone-900 text-white border-stone-900' : 'border-stone-200 text-stone-700 bg-stone-50/50 hover:border-stone-400'}`}
                     >
@@ -162,12 +179,11 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
               </div>
             </div>
 
-            {/* Core CTA Action Bars */}
             <div className="mt-4 pt-2 border-t border-stone-100/80 space-y-1.5">
-              <button onClick={handleAddToCart} className="w-full bg-stone-900 text-white py-2 text-[10px] uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors">
+              <button type="button" onClick={handleAddToCart} className="w-full bg-stone-900 text-white py-2 text-[10px] uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors">
                 Add To Bag
               </button>
-              <button onClick={() => setShowReviews(true)} className="w-full bg-stone-50 text-stone-700 border border-stone-200/80 py-1.5 text-[9px] uppercase tracking-widest font-medium hover:bg-stone-100 transition-colors flex items-center justify-center gap-1">
+              <button type="button" onClick={() => setShowReviews(true)} className="w-full bg-stone-50 text-stone-700 border border-stone-200/80 py-1.5 text-[9px] uppercase tracking-widest font-medium hover:bg-stone-100 transition-colors flex items-center justify-center gap-1">
                 ★ View Reviews
               </button>
             </div>
@@ -175,9 +191,120 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
         </>
       )}
 
-      {/* Conditional Modal Displays */}
-      {showSizeGuide && <div className="text-stone-400 text-xs">Size Guide Opened</div>}
-      {showReviews && <div className="text-stone-400 text-xs">Reviews Interface Opened</div>}
+      {showSizeGuide && <div className="text-stone-400 text-xs text-center py-2">Size Guide Reference Map Active</div>}
+      {showReviews && <div className="text-stone-400 text-xs text-center py-2">Reviews Feed Interface Active</div>}
     </div>
   );
 }
+
+function ProductDetailPage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { user, setCart } = useContext(AppContext);
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [activeImage, setActiveImage] = useState('');
+  const [selectedSize, setSelectedSize] = useState('');
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`${API_URL}/api/products`)
+      .then((res) => res.json())
+      .then((data) => {
+        const found = data.find((p) => p._id === id);
+        if (found) {
+          setProduct(found);
+          const urls = found.image ? found.image.split('|').map(u => u.trim()).filter(Boolean) : [];
+          setActiveImage(urls[0] || '/images/placeholder.jpg');
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error(err);
+        setLoading(false);
+      });
+  }, [id]);
+
+  if (loading) {
+    return <div className="text-center py-24 text-xs uppercase tracking-widest text-stone-400">Loading Style Context...</div>;
+  }
+
+  if (!product) {
+    return (
+      <div className="text-center py-24 max-w-md mx-auto px-4">
+        <p className="text-sm text-stone-500 uppercase tracking-wider mb-6">Product presentation footprint not found.</p>
+        <Link to="/" className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-stone-900 font-bold underline"><ArrowLeft size={14} /> Return Home</Link>
+      </div>
+    );
+  }
+
+  const imagesList = product.image ? product.image.split('|').map(u => u.trim()).filter(Boolean) : [];
+
+  const handleDetailedAdd = async () => {
+    if (!user) return navigate('/auth');
+    if (!selectedSize) {
+      alert("Please select your shoe size configuration!");
+      return;
+    }
+    try {
+      const res = await fetchAPI('/cart', { method: 'POST', body: JSON.stringify({ action: 'add', productId: product._id, size: selectedSize }) });
+      setCart(res.cart);
+      alert(`Successfully added size ${selectedSize} to bag.`);
+    } catch (err) {
+      alert("Error adding context to bag");
+    }
+  };
+
+  return (
+    <div className="max-w-6xl mx-auto px-4 py-8 md:py-16">
+      <button onClick={() => navigate(-1)} className="mb-8 flex items-center gap-2 text-xs uppercase tracking-widest text-stone-600 hover:text-stone-900 transition-colors">
+        <ArrowLeft size={16} /> Back to Catalog
+      </button>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
+        <div className="space-y-4">
+          <div className="bg-stone-50 border border-stone-100 rounded-sm overflow-hidden aspect-[4/5] flex items-center justify-center p-4">
+            <img src={activeImage} alt={product.name} className="w-full h-full object-contain mix-blend-multiply" />
+          </div>
+          {imagesList.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {imagesList.map((img, index) => (
+                <button key={index} onClick={() => setActiveImage(img)} className={`w-20 h-20 border p-1 bg-stone-50 rounded-xs flex-shrink-0 ${activeImage === img ? 'border-stone-900' : 'border-stone-200'}`}>
+                  <img src={img} alt="" className="w-full h-full object-contain mix-blend-multiply" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="text-left space-y-6">
+          <div>
+            <span className="text-[10px] uppercase tracking-widest font-bold text-stone-400 bg-stone-100 px-2.5 py-1 rounded-sm">{product.category || 'Luxury Design'}</span>
+            <h1 className="text-2xl md:text-3xl font-light uppercase tracking-wide text-stone-900 mt-3">{product.name}</h1>
+            <p className="text-xl font-bold text-stone-900 mt-2">Rs. {Number(product.price).toLocaleString('en-IN')}</p>
+          </div>
+
+          <hr className="border-stone-200" />
+
+          <div className="space-y-3">
+            <label className="text-xs uppercase tracking-widest text-stone-500 font-medium block">Select Size (EU)</label>
+            <div className="flex gap-2 flex-wrap">
+              {["36", "37", "38", "39", "40"].map((size) => (
+                <button key={size} onClick={() => setSelectedSize(size)} className={`border text-xs w-12 h-12 flex items-center justify-center font-semibold transition-all rounded-xs ${selectedSize === size ? 'bg-stone-900 text-white border-stone-900 shadow-md' : 'border-stone-200 text-stone-700 hover:border-stone-400 bg-white'}`}>
+                  {size}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button onClick={handleDetailedAdd} className="w-full bg-stone-900 text-white py-4 uppercase tracking-widest text-xs font-semibold hover:bg-stone-800 transition-colors shadow-sm flex items-center justify-center gap-2">
+            <ShoppingBag size={16} /> Add Luxury Bag Selection
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// MANDATORY SYSTEM FIX: Explicitly export ProductDetailPage as the default target module
+export default ProductDetailPage;
