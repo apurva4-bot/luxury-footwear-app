@@ -304,7 +304,7 @@ function Products({ category, title }) {
   );
 }
 
-function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }) {
+export function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }) {
   const [isEditing, setIsEditing] = useState(false);
   const imageUrls = p.image ? p.image.split('|').map(url => url.trim()).filter(Boolean) : [];
   const [currentImage, setCurrentImage] = useState('');
@@ -437,16 +437,55 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
               {/* Dynamic color selection variant loops + overflow balance counter layout */}
               {totalVariants.length > 0 && (
                 <div className="flex gap-1.5 mt-2 mb-1 items-center flex-wrap">
-                  {visibleVariants.map((v, idx) => (
-                    <button 
-                      key={idx} 
-                      type="button"
-                      onClick={() => v.image && setCurrentImage(v.image)} 
-                      title={v.color || 'Variant'}
-                      className="w-3.5 h-3.5 md:w-4 md:h-4 rounded-full border border-stone-300 hover:scale-110 hover:border-stone-800 transition-all shadow-sm focus:outline-none"
-                      style={{ backgroundColor: v.color?.toLowerCase().trim() || '#ccc' }}
-                    />
-                  ))}
+                  {visibleVariants.map((v, idx) => {
+                    const colorMap = {
+                      'cream': '#fdf6e2',
+                      'green': '#2e5a44',
+                      'bloody red': '#990000',
+                      'silver': '#e0e0e0',
+                      'nude': '#e6ba9a',
+                      'pista': '#98ff98',
+                      'peach': '#ffcba4',
+                      'darkest red': '#4a0404',
+                      'mixed red and black': 'linear-gradient(135deg, #cc0000 50%, #000000 50%)',
+                      'mixed brown and nude': 'linear-gradient(135deg, #5c4033 50%, #e6ba9a 50%)',
+                      'polka dots(red ,black )': 'radial-gradient(#000000 20%, transparent 20%), #cc0000',
+                      'black': '#000000',
+                      'white': '#ffffff',
+                      'grey': '#808080',
+                      'brown': '#5c4033',
+                      'maroon': '#800000',
+                      'gold': '#ffd700',
+                      'blue': '#1e3d59',
+                      'skyblue': '#87ceeb',
+                      'pink': '#ffb6c1',
+                      'tan': '#d2b48c',
+                      'cheetah': '#cca43b',
+                      'leopard': '#b5651d',
+                      'champagne': '#f7e7ce',
+                      'rose gold': '#b76e79',
+                      'lavender': '#e6e6fa',
+                      'mint': '#aaf0d1',
+                      'charcoal': '#36454f'
+                    };
+
+                    const cleanColorName = v.color ? v.color.toLowerCase().trim() : '';
+                    const finalBg = colorMap[cleanColorName] || v.color || '#ccc';
+
+                    return (
+                      <button 
+                        key={idx} 
+                        type="button"
+                        onClick={() => v.image && setCurrentImage(v.image)} 
+                        title={v.color || 'Variant'}
+                        className="w-3.5 h-3.5 md:w-4 md:h-4 rounded-full border border-stone-300 hover:scale-110 hover:border-stone-800 transition-all shadow-sm focus:outline-none"
+                        style={{ 
+                          background: finalBg, 
+                          backgroundColor: finalBg.startsWith('linear') || finalBg.startsWith('radial') ? 'transparent' : finalBg 
+                        }}
+                      />
+                    );
+                  })}
                   {extraColorsCount > 0 && (
                     <span className="text-[9px] md:text-[10px] text-stone-400 font-medium tracking-wider pl-0.5">
                       +{extraColorsCount} Colors
