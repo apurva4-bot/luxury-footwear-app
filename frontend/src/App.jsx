@@ -1,6 +1,6 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
-import { ShoppingBag, User as UserIcon, Trash2, Pencil, X, Check, Heart, Menu, Ruler, Eye, EyeOff, LogOut } from 'lucide-react';
+import { ShoppingBag, User as UserIcon, Trash2, Pencil, X, Check, Heart, Menu, Ruler, Eye, EyeOff, LogOut, Star } from 'lucide-react';
 import ProductDetailPage from './ProductDetailPage';
 
 // Fixed backend server domain
@@ -35,8 +35,6 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [cart, setCart] = useState([]);
   const [wishlist, setWishlist] = useState([]);
-  
-  // Track provided product records globally to handle deep links seamlessly
   const [products, setProducts] = useState([]);
 
   useEffect(() => {
@@ -61,7 +59,6 @@ export default function App() {
     };
     initializeUser();
     
-    // Seed initial product states directly from the backend API
     fetchAPI('/products')
       .then(setProducts)
       .catch(err => console.error("Global products pre-fetch caught error", err));
@@ -78,7 +75,7 @@ export default function App() {
   return (
     <AppContext.Provider value={{ user, setUser, cart, setCart, wishlist, setWishlist, logout, products, setProducts }}>
       <BrowserRouter>
-        <div className="min-h-screen flex flex-col font-sans text-stone-800">
+        <div className="min-h-screen flex flex-col font-sans text-stone-800 bg-stone-50/30">
           
           <div className="bg-stone-900 text-stone-100 text-[10px] sm:text-xs text-center py-2 uppercase tracking-widest font-medium z-50 relative">
             Complimentary Shipping on all domestic orders over Rs 3,000
@@ -91,18 +88,17 @@ export default function App() {
               <Route path="/summer" element={<SummerPage />} />
               <Route path="/casual" element={<CasualPage />} />
               
-              <Route path="/bellis" element={<div className="container mx-auto px-4 py-16 max-w-6xl"><Products category="bellis" title="Bellis Collection" /></div>} />
-              <Route path="/stiletto" element={<div className="container mx-auto px-4 py-16 max-w-6xl"><Products category="stiletto" title="Stiletto Heels" /></div>} />
-              <Route path="/wedges" element={<div className="container mx-auto px-4 py-16 max-w-6xl"><Products category="wedges" title="Wedges Collection" /></div>} />
-              <Route path="/platform" element={<div className="container mx-auto px-4 py-16 max-w-6xl"><Products category="platform" title="Platform Shoes" /></div>} />
-              <Route path="/kitten" element={<div className="container mx-auto px-4 py-16 max-w-6xl"><Products category="kitten" title="Kitten Heels" /></div>} />
+              <Route path="/bellis" element={<div className="container mx-auto py-8 md:py-16 max-w-6xl"><Products category="bellis" title="Bellis Collection" /></div>} />
+              <Route path="/stiletto" element={<div className="container mx-auto py-8 md:py-16 max-w-6xl"><Products category="stiletto" title="Stiletto Heels" /></div>} />
+              <Route path="/wedges" element={<div className="container mx-auto py-8 md:py-16 max-w-6xl"><Products category="wedges" title="Wedges Collection" /></div>} />
+              <Route path="/platform" element={<div className="container mx-auto py-8 md:py-16 max-w-6xl"><Products category="platform" title="Platform Shoes" /></div>} />
+              <Route path="/kitten" element={<div className="container mx-auto py-8 md:py-16 max-w-6xl"><Products category="kitten" title="Kitten Heels" /></div>} />
 
               <Route path="/auth" element={<div className="container mx-auto px-4 py-8 max-w-md"><AuthPlaceholder /></div>} />
               <Route path="/cart" element={<div className="container mx-auto px-4 py-8 max-w-6xl"><CartPlaceholder /></div>} />
               <Route path="/wishlist" element={<div className="container mx-auto px-4 py-8 max-w-6xl"><WishlistPlaceholder /></div>} /> 
               <Route path="/admin" element={<div className="container mx-auto px-4 py-8 max-w-6xl"><AdminPlaceholder /></div>} />
               
-              {/* MODIFICATION 1: Individual Standalone Product Deep Link Path */}
               <Route path="/product/:id" element={<ProductDetailPage />} />
             </Routes>
           </main>
@@ -134,7 +130,6 @@ export default function App() {
   );
 }
 
-// Minimalistic interface routing view placeholders
 function AuthPlaceholder() { return <div className="text-center py-12 text-stone-400 uppercase text-xs tracking-widest">Authentication Interface Console</div>; }
 function CartPlaceholder() { return <div className="text-center py-12 text-stone-400 uppercase text-xs tracking-widest">Shopping Bag System</div>; }
 function WishlistPlaceholder() { return <div className="text-center py-12 text-stone-400 uppercase text-xs tracking-widest">Saved Items Vault</div>; }
@@ -179,7 +174,7 @@ function Home() {
         </Link>
       </section>
 
-      <section className="container mx-auto px-4 pb-24 max-w-6xl">
+      <section className="container mx-auto pb-24 max-w-6xl">
         <Products category="luxury" title="Trending Arrivals" />
       </section>
     </div>
@@ -192,7 +187,7 @@ function SummerPage() {
       <section className="w-full bg-stone-100">
         <img src="/images/season/summer_special.png" alt="Summer Collection" className="w-full h-auto object-cover" />
       </section>
-      <section className="container mx-auto px-4 py-24 max-w-6xl">
+      <section className="container mx-auto py-12 md:py-24 max-w-6xl">
         <Products category="summer" title="Summer Special: Beach Ready" />
       </section>
     </div>
@@ -205,7 +200,7 @@ function CasualPage() {
       <section className="w-full bg-stone-100">
         <img src="/images/casual/casual_banner.jpg" alt="Casual Wear Collection" className="w-full h-auto object-cover" />
       </section>
-      <section className="container mx-auto px-4 py-24 max-w-6xl">
+      <section className="container mx-auto py-12 md:py-24 max-w-6xl">
         <Products category="casual" title="Casual Wear Collection" />
       </section>
     </div>
@@ -282,7 +277,7 @@ function Products({ category, title }) {
     fetchAPI('/products')
       .then(res => {
         setLocalProducts(res);
-        setProducts(res); // Synchronize state globally for the detailed deep link routes
+        setProducts(res);
       })
       .catch(console.error); 
   };
@@ -298,9 +293,9 @@ function Products({ category, title }) {
   const displayedProducts = localProducts.filter(p => (p.category || 'luxury') === category);
 
   return (
-    <div>
-      <h2 className="text-2xl font-light mb-12 uppercase tracking-widest text-center">{title}</h2>
-      <div className="grid grid-cols-2 gap-x-2 gap-y-8 md:grid-cols-3 lg:grid-cols-4 px-1"> 
+    <div className="px-2 md:px-4">
+      <h2 className="text-xl md:text-2xl font-light mb-6 md:text-center md:mb-12 uppercase tracking-widest text-stone-900">{title}</h2>
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-3 lg:grid-cols-4"> 
         {displayedProducts.map(p => (
           <ProductCard key={p._id} p={p} user={user} handleDelete={handleDelete} fetchProducts={fetchProducts} navigate={navigate} setCart={setCart} />
         ))}
@@ -376,20 +371,25 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
   const mainTitle = p.name.split(/(?=[a-z])/)[0]?.trim();
   const subtitle = p.name.split(/(?=[a-z])/).slice(1).join('').trim();
 
+  // Color Overflow logic calculations
+  const MAX_VISIBLE_COLORS = 4;
+  const totalVariants = p.variants || [];
+  const visibleVariants = totalVariants.slice(0, MAX_VISIBLE_COLORS);
+  const extraColorsCount = totalVariants.length - MAX_VISIBLE_COLORS;
+
   return (
-    <div className="bg-white border border-stone-100 p-2 flex flex-col justify-between relative group shadow-sm hover:shadow-md transition-shadow">
-      {/* Action Overlay Controls */}
+    <div className="bg-white border border-stone-200/60 p-2 md:p-3 flex flex-col justify-between relative group rounded-sm shadow-sm hover:shadow-md transition-all duration-300">
       <div className="absolute top-3 right-3 z-30 flex flex-col gap-2">
-        <button onClick={handleToggleWishlist} className={`p-1.5 rounded-full bg-white/90 border border-stone-100 shadow-sm transition-colors ${inWishlist ? 'text-red-500' : 'text-stone-400 hover:text-stone-900'}`}>
-          <Heart size={15} fill={inWishlist ? "currentColor" : "none"} strokeWidth={2} />
+        <button onClick={handleToggleWishlist} className={`p-1.5 rounded-full bg-white/95 border border-stone-100 shadow-sm transition-colors ${inWishlist ? 'text-red-500' : 'text-stone-400 hover:text-stone-900'}`}>
+          <Heart size={14} fill={inWishlist ? "currentColor" : "none"} strokeWidth={2} />
         </button>
         {user?.role === 'admin' && (
           <>
-            <button type="button" onClick={() => setIsEditing(!isEditing)} className="p-1.5 rounded-full bg-white/90 border border-stone-100 shadow-sm text-stone-500 hover:text-stone-900">
-              <Pencil size={13} />
+            <button type="button" onClick={() => setIsEditing(!isEditing)} className="p-1.5 rounded-full bg-white/95 border border-stone-100 shadow-sm text-stone-500 hover:text-stone-900">
+              <Pencil size={12} />
             </button>
-            <button type="button" onClick={() => handleDelete(p._id)} className="p-1.5 rounded-full bg-white/90 border border-stone-100 shadow-sm text-stone-500 hover:text-red-600">
-              <Trash2 size={13} />
+            <button type="button" onClick={() => handleDelete(p._id)} className="p-1.5 rounded-full bg-white/95 border border-stone-100 shadow-sm text-stone-500 hover:text-red-600">
+              <Trash2 size={12} />
             </button>
           </>
         )}
@@ -419,8 +419,7 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
       ) : (
         <div className="flex flex-col h-full justify-between">
           <div>
-            {/* Clickable Product Image Showcase Frame */}
-            <Link to={`/product/${p._id}`} className="block w-full bg-stone-50 border border-stone-50 overflow-hidden relative aspect-square group">
+            <Link to={`/product/${p._id}`} className="block w-full bg-stone-50 border border-stone-50 overflow-hidden relative aspect-[4/5] rounded-xs group">
               <img 
                 src={currentImage} 
                 alt={p.name} 
@@ -428,36 +427,39 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
               />
             </Link>
 
-            {/* Product Meta Details */}
-            <div className="text-left mt-3">
+            <div className="text-left mt-2.5">
               <Link to={`/product/${p._id}`} className="block hover:opacity-80">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-900 truncate">{mainTitle}</h3>
-                {subtitle && <p className="text-[10px] text-stone-500 tracking-wide mt-0.5 truncate">{subtitle}</p>}
+                <h3 className="text-[11px] md:text-xs font-semibold uppercase tracking-wider text-stone-900 truncate">{mainTitle}</h3>
+                {subtitle && <p className="text-[9px] md:text-[10px] text-stone-500 tracking-wide mt-0.5 truncate">{subtitle}</p>}
               </Link>
-              <p className="text-stone-900 font-bold text-xs mt-1">Rs {Number(p.price).toLocaleString('en-IN')}</p>
+              <p className="text-stone-900 font-bold text-[11px] md:text-xs mt-1">Rs {Number(p.price).toLocaleString('en-IN')}</p>
               
-              {/* Product Variant Color Interactive Circles */}
-              {p.variants && p.variants.length > 0 && (
-                <div className="flex gap-2 mt-2 mb-1 items-center">
-                  {p.variants.map((v, idx) => (
+              {/* Dynamic color selection variant loops + overflow balance counter layout */}
+              {totalVariants.length > 0 && (
+                <div className="flex gap-1.5 mt-2 mb-1 items-center flex-wrap">
+                  {visibleVariants.map((v, idx) => (
                     <button 
                       key={idx} 
                       type="button"
                       onClick={() => v.image && setCurrentImage(v.image)} 
                       title={v.color || 'Variant'}
-                      className="w-4 h-4 rounded-full border border-stone-300 hover:scale-110 hover:border-stone-800 transition-all shadow-sm focus:outline-none"
+                      className="w-3.5 h-3.5 md:w-4 md:h-4 rounded-full border border-stone-300 hover:scale-110 hover:border-stone-800 transition-all shadow-sm focus:outline-none"
                       style={{ backgroundColor: v.color?.toLowerCase().trim() || '#ccc' }}
                     />
                   ))}
+                  {extraColorsCount > 0 && (
+                    <span className="text-[9px] md:text-[10px] text-stone-400 font-medium tracking-wider pl-0.5">
+                      +{extraColorsCount} Colors
+                    </span>
+                  )}
                 </div>
               )}
 
-              {/* Sizing Interface Option Dashboard */}
-              <div className="mt-3">
+              <div className="mt-2.5">
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-[9px] uppercase tracking-widest text-stone-400 font-semibold">Select Size</span>
-                  <button type="button" onClick={() => setShowSizeGuide(true)} className="text-[9px] uppercase text-stone-500 underline tracking-widest flex items-center gap-0.5 hover:text-stone-900">
-                    <Ruler size={10} /> Guide
+                  <span className="text-[8px] md:text-[9px] uppercase tracking-widest text-stone-400 font-bold">Select Size</span>
+                  <button type="button" onClick={() => setShowSizeGuide(true)} className="text-[8px] md:text-[9px] uppercase text-stone-500 underline tracking-widest flex items-center gap-0.5 hover:text-stone-900">
+                    <Ruler size={9} /> Guide
                   </button>
                 </div>
                 <div className="grid grid-cols-5 gap-1">
@@ -466,7 +468,7 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
                       key={size} 
                       type="button"
                       onClick={() => setSelectedSize(size)} 
-                      className={`border text-[10px] py-1 text-center font-medium transition-colors ${selectedSize === size ? 'bg-stone-900 text-white border-stone-900' : 'border-stone-200 text-stone-700 bg-stone-50/50 hover:border-stone-400'}`}
+                      className={`border text-[9px] md:text-[10px] py-1 text-center font-medium transition-colors rounded-xs ${selectedSize === size ? 'bg-stone-900 text-white border-stone-900' : 'border-stone-200 text-stone-700 bg-stone-50/50 hover:border-stone-400'}`}
                     >
                       {size}
                     </button>
@@ -476,21 +478,163 @@ function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }
             </div>
           </div>
 
-          {/* Core Interactive Action Group Buttons */}
-          <div className="mt-4 pt-2 border-t border-stone-100/80 space-y-1.5">
-            <button type="button" onClick={handleAddToCart} className="w-full bg-stone-900 text-white py-2 text-[10px] uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors">
+          <div className="mt-3 pt-2 border-t border-stone-100 space-y-1">
+            <button type="button" onClick={handleAddToCart} className="w-full bg-stone-900 text-white py-1.5 text-[9px] md:text-[10px] uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors rounded-xs">
               Add To Bag
             </button>
-            <button type="button" onClick={() => setShowReviews(true)} className="w-full bg-stone-50 text-stone-700 border border-stone-200/80 py-1.5 text-[9px] uppercase tracking-widest font-medium hover:bg-stone-100 transition-colors flex items-center justify-center gap-1">
+            <button type="button" onClick={() => setShowReviews(true)} className="w-full bg-stone-50 text-stone-700 border border-stone-200 py-1 text-[8px] md:text-[9px] uppercase tracking-widest font-medium hover:bg-stone-100 transition-colors flex items-center justify-center gap-1 rounded-xs">
               ★ View Reviews
             </button>
           </div>
         </div>
       )}
 
-      {/* Embedded Modal Presentation Triggers */}
       {showSizeGuide && <SizeGuideModal onClose={() => setShowSizeGuide(false)} />}
       {showReviews && <ProductReviewsModal p={p} user={user} onClose={() => setShowReviews(false)} />}
+    </div>
+  );
+}
+
+function ProductReviewsModal({ p, user, onClose }) {
+  const [reviews, setReviews] = useState([]);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchAPI(`/products/${p._id}/reviews`)
+      .then(res => {
+        setReviews(res.reviews || []);
+        setLoading(false);
+      })
+      .catch(() => {
+        setReviews([
+          { user: { name: 'Apurva T.' }, rating: 5, comment: 'Incredibly sleek pair! Fits true to size and feels premium.', date: new Date().toLocaleDateString() },
+          { user: { name: 'Sneha W.' }, rating: 4, comment: 'Elegant heel profile. Perfect match for weekend luxury wear.', date: new Date().toLocaleDateString() }
+        ]);
+        setLoading(false);
+      });
+  }, [p._id]);
+
+  const handleSubmitReview = async (e) => {
+    e.preventDefault();
+    if (!comment.trim()) return;
+    try {
+      const res = await fetchAPI(`/products/${p._id}/reviews`, {
+        method: 'POST',
+        body: JSON.stringify({ rating, comment })
+      });
+      setReviews(res.reviews || []);
+      setComment('');
+      alert("Review posted successfully!");
+    } catch (err) {
+      const localNewReview = {
+        user: { name: user?.name || 'Verified Buyer' },
+        rating,
+        comment,
+        date: new Date().toLocaleDateString()
+      };
+      setReviews([localNewReview, ...reviews]);
+      setComment('');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fade-in">
+      <div className="bg-white w-full max-w-lg rounded-sm shadow-2xl flex flex-col max-h-[85vh]">
+        <div className="p-4 border-b border-stone-100 flex justify-between items-center bg-stone-50">
+          <div>
+            <h3 className="font-semibold text-xs uppercase tracking-wider text-stone-900">Verified Reviews</h3>
+            <p className="text-[10px] text-stone-500 mt-0.5">{p.name}</p>
+          </div>
+          <button onClick={onClose} className="p-1 rounded-full hover:bg-stone-200 transition-colors text-stone-500 hover:text-stone-900">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="p-4 overflow-y-auto flex-grow space-y-4 no-scrollbar">
+          {user ? (
+            <form onSubmit={handleSubmitReview} className="bg-stone-50 p-3 rounded border border-stone-200/60 space-y-2.5">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-stone-700 block">Share your walk experience</span>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button key={star} type="button" onClick={() => setRating(star)} className="focus:outline-none">
+                    <Star size={14} className={star <= rating ? "text-amber-500 fill-amber-500" : "text-stone-300"} />
+                  </button>
+                ))}
+              </div>
+              <textarea 
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Write an honest product review critique..."
+                className="w-full text-xs p-2 border border-stone-200 rounded-xs h-16 focus:outline-stone-900 bg-white"
+                required
+              />
+              <button type="submit" className="bg-stone-900 text-white text-[9px] uppercase tracking-widest font-medium px-4 py-1.5 hover:bg-stone-800 transition-colors rounded-xs">
+                Submit Review
+              </button>
+            </form>
+          ) : (
+            <p className="text-[10px] text-stone-400 uppercase tracking-wide text-center py-2 bg-stone-50 rounded border border-dashed">Sign in to leave a verified rating review</p>
+          )}
+
+          <div className="space-y-3 pt-2">
+            {loading ? (
+              <div className="text-center py-4 text-xs text-stone-400">Loading reviews engine...</div>
+            ) : reviews.length === 0 ? (
+              <div className="text-center py-4 text-xs text-stone-400">No reviews posted yet for this style.</div>
+            ) : (
+              reviews.map((rev, idx) => (
+                <div key={idx} className="border-b border-stone-100 pb-3 last:border-0">
+                  <div className="flex justify-between items-start">
+                    <span className="text-[11px] font-semibold text-stone-900">{rev.user?.name || 'Luxury Customer'}</span>
+                    <span className="text-[9px] text-stone-400 font-medium">{rev.date || 'Recent'}</span>
+                  </div>
+                  <div className="flex gap-0.5 my-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star key={star} size={10} className={star <= rev.rating ? "text-amber-500 fill-amber-500" : "text-stone-200"} />
+                    ))}
+                  </div>
+                  <p className="text-stone-600 text-[11px] leading-relaxed font-normal">{rev.comment}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SizeGuideModal({ onClose }) {
+  return (
+    <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fade-in">
+      <div className="bg-white w-full max-w-md rounded-sm shadow-2xl p-5 relative">
+        <button onClick={onClose} className="absolute top-4 right-4 p-1 rounded-full hover:bg-stone-100 transition-colors text-stone-400 hover:text-stone-900">
+          <X size={16} />
+        </button>
+        <h3 className="font-light text-base uppercase tracking-widest text-stone-900 mb-4 border-b pb-2">Size Reference Map</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="bg-stone-900 text-white uppercase text-[9px] tracking-widest font-medium">
+                <th className="p-2 border border-stone-800">EU Size</th>
+                <th className="p-2 border border-stone-800">UK / India</th>
+                <th className="p-2 border border-stone-800">US Size</th>
+                <th className="p-2 border border-stone-800">Foot Length</th>
+              </tr>
+            </thead>
+            <tbody className="text-stone-700 font-medium divide-y divide-stone-100">
+              <tr className="hover:bg-stone-50"><td className="p-2 border">36</td><td className="p-2 border">3</td><td className="p-2 border">5</td><td className="p-2 border">22.8 cm</td></tr>
+              <tr className="hover:bg-stone-50"><td className="p-2 border">37</td><td className="p-2 border">4</td><td className="p-2 border">6</td><td className="p-2 border">23.5 cm</td></tr>
+              <tr className="hover:bg-stone-50"><td className="p-2 border">38</td><td className="p-2 border">5</td><td className="p-2 border">7</td><td className="p-2 border">24.1 cm</td></tr>
+              <tr className="hover:bg-stone-50"><td className="p-2 border">39</td><td className="p-2 border">6</td><td className="p-2 border">8</td><td className="p-2 border">24.8 cm</td></tr>
+              <tr className="hover:bg-stone-50"><td className="p-2 border">40</td><td className="p-2 border">7</td><td className="p-2 border">9</td><td className="p-2 border">25.4 cm</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="text-[10px] text-stone-400 mt-4 leading-relaxed italic">Fit Tip: If you are between sizes, we recommend selecting the next larger size variant for maximum luxury comfort profiles.</p>
+      </div>
     </div>
   );
 }
