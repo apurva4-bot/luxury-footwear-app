@@ -85,19 +85,27 @@ export function ProductCard({ p, user, handleDelete, fetchProducts, navigate, se
   const mainTitle = p.name.split(/(?=[a-z])/)[0]?.trim();
   const subtitle = p.name.split(/(?=[a-z])/).slice(1).join('').trim();
 
+  // ==========================================
+  // MODIFICATION 2: VISIBILITY LIMITS FOR VARIANTS
+  // ==========================================
+  const MAX_VISIBLE_COLORS = 4;
+  const totalVariants = p.variants || [];
+  const visibleVariants = totalVariants.slice(0, MAX_VISIBLE_COLORS);
+  const extraColorsCount = totalVariants.length - MAX_VISIBLE_COLORS;
+
   return (
-    <div className="bg-white border border-stone-100 p-2 flex flex-col justify-between relative group shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-white border border-stone-200/60 p-2 md:p-3 flex flex-col justify-between relative group rounded-sm shadow-sm hover:shadow-md transition-all duration-300">
       <div className="absolute top-3 right-3 z-30 flex flex-col gap-2">
-        <button onClick={handleToggleWishlist} className={`p-1.5 rounded-full bg-white/90 border border-stone-100 shadow-sm transition-colors ${inWishlist ? 'text-red-500' : 'text-stone-400 hover:text-stone-900'}`}>
-          <Heart size={15} fill={inWishlist ? "currentColor" : "none"} strokeWidth={2} />
+        <button onClick={handleToggleWishlist} className={`p-1.5 rounded-full bg-white/95 border border-stone-100 shadow-sm transition-colors ${inWishlist ? 'text-red-500' : 'text-stone-400 hover:text-stone-900'}`}>
+          <Heart size={14} fill={inWishlist ? "currentColor" : "none"} strokeWidth={2} />
         </button>
         {user?.role === 'admin' && (
           <>
-            <button onClick={() => setIsEditing(!isEditing)} className="p-1.5 rounded-full bg-white/90 border border-stone-100 shadow-sm text-stone-500 hover:text-stone-900">
-              <Pencil size={13} />
+            <button type="button" onClick={() => setIsEditing(!isEditing)} className="p-1.5 rounded-full bg-white/95 border border-stone-100 shadow-sm text-stone-500 hover:text-stone-900">
+              <Pencil size={12} />
             </button>
-            <button onClick={() => handleDelete(p._id)} className="p-1.5 rounded-full bg-white/90 border border-stone-100 shadow-sm text-stone-500 hover:text-red-600">
-              <Trash2 size={13} />
+            <button type="button" onClick={() => handleDelete(p._id)} className="p-1.5 rounded-full bg-white/95 border border-stone-100 shadow-sm text-stone-500 hover:text-red-600">
+              <Trash2 size={12} />
             </button>
           </>
         )}
@@ -125,43 +133,49 @@ export function ProductCard({ p, user, handleDelete, fetchProducts, navigate, se
           </div>
         </form>
       ) : (
-        <>
-          <Link to={`/product/${p._id}`} className="block w-full bg-stone-50 border border-stone-50 overflow-hidden relative aspect-square group">
-            <img 
-              src={currentImage} 
-              alt={p.name} 
-              className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-500" 
-            />
-          </Link>
- 
-          <div className="text-left mt-3 flex-grow flex flex-col justify-between">
-            <div>
-              <Link to={`/product/${p._id}`} className="block group-hover:opacity-80">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-900 truncate">{mainTitle}</h3>
-                {subtitle && <p className="text-[10px] text-stone-500 tracking-wide mt-0.5 truncate">{subtitle}</p>}
+        <div className="flex flex-col h-full justify-between">
+          <div>
+            <Link to={`/product/${p._id}`} className="block w-full bg-stone-50 border border-stone-50 overflow-hidden relative aspect-[4/5] rounded-xs group">
+              <img 
+                src={currentImage} 
+                alt={p.name} 
+                className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-500" 
+              />
+            </Link>
+
+            <div className="text-left mt-2.5">
+              <Link to={`/product/${p._id}`} className="block hover:opacity-80">
+                <h3 className="text-[11px] md:text-xs font-semibold uppercase tracking-wider text-stone-900 truncate">{mainTitle}</h3>
+                {subtitle && <p className="text-[9px] md:text-[10px] text-stone-500 tracking-wide mt-0.5 truncate">{subtitle}</p>}
               </Link>
-              <p className="text-stone-900 font-bold text-xs mt-1">Rs {Number(p.price).toLocaleString('en-IN')}</p>
+              <p className="text-stone-900 font-bold text-[11px] md:text-xs mt-1">Rs {Number(p.price).toLocaleString('en-IN')}</p>
               
-              {p.variants && p.variants.length > 0 && (
-                <div className="flex gap-2 mt-2 mb-1 items-center">
-                  {p.variants.map((v, idx) => (
+              {/* MODIFICATION 2 UI RENDER */}
+              {totalVariants.length > 0 && (
+                <div className="flex gap-1.5 mt-2 mb-1 items-center flex-wrap">
+                  {visibleVariants.map((v, idx) => (
                     <button 
                       key={idx} 
                       type="button"
                       onClick={() => v.image && setCurrentImage(v.image)} 
                       title={v.color || 'Variant'}
-                      className="w-4 h-4 rounded-full border border-stone-300 hover:scale-110 hover:border-stone-800 transition-all shadow-sm focus:outline-none"
-                      style={{ backgroundColor: v.color?.toLowerCase() || '#ccc' }}
+                      className="w-3.5 h-3.5 md:w-4 md:h-4 rounded-full border border-stone-300 hover:scale-110 hover:border-stone-800 transition-all shadow-sm focus:outline-none"
+                      style={{ backgroundColor: v.color?.toLowerCase().trim() || '#ccc' }}
                     />
                   ))}
+                  {extraColorsCount > 0 && (
+                    <span className="text-[9px] md:text-[10px] text-stone-400 font-medium tracking-wider pl-0.5">
+                      +{extraColorsCount} Colors
+                    </span>
+                  )}
                 </div>
               )}
 
-              <div className="mt-3">
+              <div className="mt-2.5">
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-[9px] uppercase tracking-widest text-stone-400 font-semibold">Select Size</span>
-                  <button type="button" onClick={() => setShowSizeGuide(true)} className="text-[9px] uppercase text-stone-500 underline tracking-widest flex items-center gap-0.5 hover:text-stone-900">
-                    <Ruler size={10} /> Guide
+                  <span className="text-[8px] md:text-[9px] uppercase tracking-widest text-stone-400 font-bold">Select Size</span>
+                  <button type="button" onClick={() => setShowSizeGuide(true)} className="text-[8px] md:text-[9px] uppercase text-stone-500 underline tracking-widest flex items-center gap-0.5 hover:text-stone-900">
+                    <Ruler size={9} /> Guide
                   </button>
                 </div>
                 <div className="grid grid-cols-5 gap-1">
@@ -170,7 +184,7 @@ export function ProductCard({ p, user, handleDelete, fetchProducts, navigate, se
                       key={size} 
                       type="button"
                       onClick={() => setSelectedSize(size)} 
-                      className={`border text-[10px] py-1 text-center font-medium transition-colors ${selectedSize === size ? 'bg-stone-900 text-white border-stone-900' : 'border-stone-200 text-stone-700 bg-stone-50/50 hover:border-stone-400'}`}
+                      className={`border text-[9px] md:text-[10px] py-1 text-center font-medium transition-colors rounded-xs ${selectedSize === size ? 'bg-stone-900 text-white border-stone-900' : 'border-stone-200 text-stone-700 bg-stone-50/50 hover:border-stone-400'}`}
                     >
                       {size}
                     </button>
@@ -178,25 +192,21 @@ export function ProductCard({ p, user, handleDelete, fetchProducts, navigate, se
                 </div>
               </div>
             </div>
-
-            <div className="mt-4 pt-2 border-t border-stone-100/80 space-y-1.5">
-              <button type="button" onClick={handleAddToCart} className="w-full bg-stone-900 text-white py-2 text-[10px] uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors">
-                Add To Bag
-              </button>
-              <button type="button" onClick={() => setShowReviews(true)} className="w-full bg-stone-50 text-stone-700 border border-stone-200/80 py-1.5 text-[9px] uppercase tracking-widest font-medium hover:bg-stone-100 transition-colors flex items-center justify-center gap-1">
-                ★ View Reviews
-              </button>
-            </div>
           </div>
-        </>
-      )}
 
-      {showSizeGuide && <div className="text-stone-400 text-xs text-center py-2">Size Guide Reference Map Active</div>}
-      {showReviews && <div className="text-stone-400 text-xs text-center py-2">Reviews Feed Interface Active</div>}
+          <div className="mt-3 pt-2 border-t border-stone-100 space-y-1">
+            <button type="button" onClick={handleAddToCart} className="w-full bg-stone-900 text-white py-1.5 text-[9px] md:text-[10px] uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors rounded-xs">
+              Add To Bag
+            </button>
+            <button type="button" onClick={() => setShowReviews(true)} className="w-full bg-stone-50 text-stone-700 border border-stone-200 py-1 text-[8px] md:text-[9px] uppercase tracking-widest font-medium hover:bg-stone-100 transition-colors flex items-center justify-center gap-1 rounded-xs">
+              ★ View Reviews
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
 function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
