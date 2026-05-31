@@ -534,6 +534,41 @@ export function ProductCard({ p, user, handleDelete, fetchProducts, navigate, se
   );
 }
 
+function SizeGuideModal({ onClose }) {
+  return (
+    <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+      <div className="bg-white p-6 w-full max-w-sm rounded-sm shadow-xl relative">
+        <button onClick={onClose} className="absolute top-4 right-4 text-stone-400 hover:text-stone-900">
+          <X size={18} />
+        </button>
+        <h3 className="font-light text-sm uppercase tracking-widest text-stone-900 mb-4 flex items-center gap-2">
+          <Ruler size={16} /> Shoe Size Chart Guide
+        </h3>
+        <div className="border border-stone-100 rounded-sm overflow-hidden text-xs">
+          <div className="grid grid-cols-3 bg-stone-50 p-2 font-bold uppercase tracking-wider text-[10px] text-stone-500 border-b border-stone-200">
+            <span>EU Size</span>
+            <span>UK Size</span>
+            <span>Inches</span>
+          </div>
+          {[
+            { eu: "36", uk: "3", in: "8.75\"" },
+            { eu: "37", uk: "4", in: "9.00\"" },
+            { eu: "38", uk: "5", in: "9.25\"" },
+            { eu: "39", uk: "6", in: "9.50\"" },
+            { eu: "40", uk: "7", in: "9.75\"" }
+          ].map((row, idx) => (
+            <div key={idx} className="grid grid-cols-3 p-2 border-b border-stone-100 last:border-none text-stone-600">
+              <span className="font-semibold text-stone-900">{row.eu}</span>
+              <span>{row.uk}</span>
+              <span>{row.in}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProductReviewsModal({ p, user, onClose }) {
   const [reviews, setReviews] = useState([]);
   const [rating, setRating] = useState(5);
@@ -579,7 +614,7 @@ function ProductReviewsModal({ p, user, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fade-in">
+    <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
       <div className="bg-white w-full max-w-lg rounded-sm shadow-2xl flex flex-col max-h-[85vh]">
         <div className="p-4 border-b border-stone-100 flex justify-between items-center bg-stone-50">
           <div>
@@ -624,55 +659,22 @@ function ProductReviewsModal({ p, user, onClose }) {
               <div className="text-center py-4 text-xs text-stone-400">No reviews posted yet for this style.</div>
             ) : (
               reviews.map((rev, idx) => (
-                <div key={idx} className="border-b border-stone-100 pb-3 last:border-0">
+                <div key={idx} className="border-b border-stone-100 pb-3 last:border-0 text-left">
                   <div className="flex justify-between items-start">
                     <span className="text-[11px] font-semibold text-stone-900">{rev.user?.name || 'Luxury Customer'}</span>
-                    <span className="text-[9px] text-stone-400 font-medium">{rev.date || 'Recent'}</span>
+                    <span className="text-[9px] text-stone-400 font-medium">{rev.date}</span>
                   </div>
                   <div className="flex gap-0.5 my-1">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <Star key={star} size={10} className={star <= rev.rating ? "text-amber-500 fill-amber-500" : "text-stone-200"} />
                     ))}
                   </div>
-                  <p className="text-stone-600 text-[11px] leading-relaxed font-normal">{rev.comment}</p>
+                  <p className="text-stone-600 text-xs mt-0.5 leading-relaxed">{rev.comment}</p>
                 </div>
               ))
             )}
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function SizeGuideModal({ onClose }) {
-  return (
-    <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fade-in">
-      <div className="bg-white w-full max-w-md rounded-sm shadow-2xl p-5 relative">
-        <button onClick={onClose} className="absolute top-4 right-4 p-1 rounded-full hover:bg-stone-100 transition-colors text-stone-400 hover:text-stone-900">
-          <X size={16} />
-        </button>
-        <h3 className="font-light text-base uppercase tracking-widest text-stone-900 mb-4 border-b pb-2">Size Reference Map</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-stone-900 text-white uppercase text-[9px] tracking-widest font-medium">
-                <th className="p-2 border border-stone-800">EU Size</th>
-                <th className="p-2 border border-stone-800">UK / India</th>
-                <th className="p-2 border border-stone-800">US Size</th>
-                <th className="p-2 border border-stone-800">Foot Length</th>
-              </tr>
-            </thead>
-            <tbody className="text-stone-700 font-medium divide-y divide-stone-100">
-              <tr className="hover:bg-stone-50"><td className="p-2 border">36</td><td className="p-2 border">3</td><td className="p-2 border">5</td><td className="p-2 border">22.8 cm</td></tr>
-              <tr className="hover:bg-stone-50"><td className="p-2 border">37</td><td className="p-2 border">4</td><td className="p-2 border">6</td><td className="p-2 border">23.5 cm</td></tr>
-              <tr className="hover:bg-stone-50"><td className="p-2 border">38</td><td className="p-2 border">5</td><td className="p-2 border">7</td><td className="p-2 border">24.1 cm</td></tr>
-              <tr className="hover:bg-stone-50"><td className="p-2 border">39</td><td className="p-2 border">6</td><td className="p-2 border">8</td><td className="p-2 border">24.8 cm</td></tr>
-              <tr className="hover:bg-stone-50"><td className="p-2 border">40</td><td className="p-2 border">7</td><td className="p-2 border">9</td><td className="p-2 border">25.4 cm</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <p className="text-[10px] text-stone-400 mt-4 leading-relaxed italic">Fit Tip: If you are between sizes, we recommend selecting the next larger size variant for maximum luxury comfort profiles.</p>
       </div>
     </div>
   );
