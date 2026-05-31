@@ -133,7 +133,147 @@ export default function App() {
 function AuthPlaceholder() { return <div className="text-center py-12 text-stone-400 uppercase text-xs tracking-widest">Authentication Interface Console</div>; }
 function CartPlaceholder() { return <div className="text-center py-12 text-stone-400 uppercase text-xs tracking-widest">Shopping Bag System</div>; }
 function WishlistPlaceholder() { return <div className="text-center py-12 text-stone-400 uppercase text-xs tracking-widest">Saved Items Vault</div>; }
-function AdminPlaceholder() { return <div className="text-center py-12 text-stone-400 uppercase text-xs tracking-widest">Management Administrator Dash</div>; }
+function AdminPlaceholder() {
+  const { setProducts } = useContext(AppContext);
+  const [form, setForm] = useState({
+    name: '',
+    price: '',
+    image: '',
+    category: 'luxury',
+    variantsText: ''
+  });
+  const [message, setMessage] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setMessage('');
+    
+    try {
+      // Parse the comma-separated color variants if provided
+      const variantsArray = form.variantsText ? form.variantsText.split(',').map(v => {
+        const parts = v.split('|');
+        return { 
+          color: parts[0]?.trim(), 
+          image: parts[1]?.trim() 
+        };
+      }).filter(v => v.color && v.image) : [];
+
+      const payload = {
+        name: form.name,
+        price: Number(form.price),
+        image: form.image,
+        category: form.category,
+        variants: variantsArray
+      };
+
+      await fetchAPI('/products', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+
+      setMessage('Product added successfully!');
+      
+      // Clear form
+      setForm({ name: '', price: '', image: '', category: 'luxury', variantsText: '' });
+      
+      // Refresh the global context product catalog
+      const updatedProducts = await fetchAPI('/products');
+      setProducts(updatedProducts);
+    } catch (err) {
+      console.error(err);
+      setMessage('Failed to add product. Make sure you are logged in as an admin.');
+    }
+  };
+
+  return (
+    <div className="max-w-xl mx-auto bg-white border border-stone-200 p-6 md:p-8 my-10 rounded-sm shadow-sm">
+      <h2 className="text-xl font-light uppercase tracking-widest text-stone-900 mb-6 text-center border-b border-stone-100 pb-4">
+        Product Management Console
+      </h2>
+      
+      {message && (
+        <div className={`p-3 text-xs uppercase tracking-wider mb-4 text-center ${message.includes('successfully') ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
+          {message}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4 text-left">
+        <div>
+          <label className="block text-[10px] uppercase tracking-widest text-stone-500 font-bold mb-1">Product Name</label>
+          <input 
+            type="text" 
+            value={form.name} 
+            onChange={e => setForm({...form, name: e.target.value})} 
+            className="w-full border border-stone-200 p-2 text-xs rounded-xs focus:outline-stone-900" 
+            placeholder="e.g. RAWLES HEELS Bella Stiletto" 
+            required 
+          />
+        </div>
+
+        <div>
+          <label className="block text-[10px] uppercase tracking-widest text-stone-500 font-bold mb-1">Price (INR)</label>
+          <input 
+            type="number" 
+            value={form.price} 
+            onChange={e => setForm({...form, price: e.target.value})} 
+            className="w-full border border-stone-200 p-2 text-xs rounded-xs focus:outline-stone-900" 
+            placeholder="e.g. 3500" 
+            required 
+          />
+        </div>
+
+        <div>
+          <label className="block text-[10px] uppercase tracking-widest text-stone-500 font-bold mb-1">Primary Image URL</label>
+          <input 
+            type="text" 
+            value={form.image} 
+            onChange={e => setForm({...form, image: e.target.value})} 
+            className="w-full border border-stone-200 p-2 text-xs rounded-xs focus:outline-stone-900" 
+            placeholder="e.g. /images/products/heel_1.jpg" 
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-[10px] uppercase tracking-widest text-stone-500 font-bold mb-1">Collection Category</label>
+          <select 
+            value={form.category} 
+            onChange={e => setForm({...form, category: e.target.value})} 
+            className="w-full border border-stone-200 p-2 text-xs rounded-xs bg-white focus:outline-stone-900"
+          >
+            <option value="luxury">Trending Arrivals</option>
+            <option value="bellis">Bellis</option>
+            <option value="stiletto">Stiletto</option>
+            <option value="wedges">Wedges</option>
+            <option value="platform">Platform</option>
+            <option value="kitten">Kitten</option>
+            <option value="summer">Summer Special</option>
+            <option value="casual">Casual Wear</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-[10px] uppercase tracking-widest text-stone-500 font-bold mb-1">
+            Color Variants (Optional)
+          </label>
+          <textarea 
+            value={form.variantsText} 
+            onChange={e => setForm({...form, variantsText: e.target.value})} 
+            className="w-full border border-stone-200 p-2 text-xs rounded-xs h-20 focus:outline-stone-900" 
+            placeholder="Format: Color|ImageUrl, Color|ImageUrl (e.g. Nude|/img/nude.jpg, Black|/img/black.jpg)" 
+          />
+        </div>
+
+        <button 
+          type="submit" 
+          className="w-full bg-stone-900 text-white py-2.5 text-xs uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors rounded-xs pt-3"
+        >
+          Publish Product to Storefront
+        </button>
+      </form>
+    </div>
+  );
+}
 
 function Home() {
   const categories = [
