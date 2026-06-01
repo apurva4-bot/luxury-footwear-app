@@ -148,15 +148,19 @@ function AuthPlaceholder() {
     e.preventDefault();
     setMessage('');
     
-    // Fixed: Pointing to your actual backend endpoints
     const endpoint = isLogin ? '/auth/login' : '/auth/register';
       
+    // Construct a payload that satisfies backend validation checks
     const payload = {
-      password: formData.password,
-      // Pass email or phone based on your active form toggle selection
-      ...(authMethod === 'email' || !isLogin ? { email: formData.email } : {}),
-      ...(authMethod === 'phone' || !isLogin ? { phone: formData.phone } : {}),
-      ...(!isLogin ? { name: formData.name } : {})
+      password: formData.password || "",
+      name: !isLogin ? (formData.name || "") : undefined,
+      
+      // Send both parameters as valid trimmed strings so backend .trim() works
+      email: (authMethod === 'email' || !isLogin) ? (formData.email || "").trim() : "",
+      phone: (authMethod === 'phone' || !isLogin) ? (formData.phone || "").trim() : "",
+      
+      // If your backend uses a shared identifier key, include it here too
+      identifier: authMethod === 'email' ? (formData.email || "").trim() : (formData.phone || "").trim()
     };
 
     try {
@@ -459,7 +463,7 @@ function WishlistPlaceholder() {
                 </button>
 
                 <div className="w-full bg-stone-50 overflow-hidden relative aspect-[4/5] rounded-xs mb-3">
-                  <img 
+                  <img const handleSubmit
                     src={item.image?.split('|')[0] || '/images/placeholder.jpg'} 
                     alt={item.name} 
                     className="w-full h-full object-contain mix-blend-multiply" 
@@ -508,7 +512,7 @@ function AdminPlaceholder() {
   const totalPriceVolume = products?.reduce((sum, item) => sum + (Number(item.price) || 0), 0) || 0;
   const averagePrice = totalProducts > 0 ? Math.round(totalPriceVolume / totalProducts) : 0;
 
-  const handleSubmit = async (e) => {
+   = async (e) => {
     e.preventDefault();
     setMessage('');
     
