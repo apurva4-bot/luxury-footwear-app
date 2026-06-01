@@ -1,354 +1,220 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Heart, Pencil, Trash2, Ruler, Star, X, ShoppingBag, ArrowLeft } from 'lucide-react';
-import { AppContext } from './App';
+import express from 'express';
+import mongoose from 'mongoose';
+import cors from 'cors';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
+import dotenv from 'dotenv';
+import nodemailer from 'nodemailer';
 
-// Fixed backend server domain helper
-const API_URL = 'https://luxury-footwear-app.onrender.com';
+dotenv.config();
+const app = express();
+app.use(express.json());
 
-const fetchAPI = async (endpoint, options = {}) => {
-  const token = localStorage.getItem('token');
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token && { 'Authorization': `Bearer ${token}` }),
-    ...options.headers
-  };
-  const response = await fetch(`${API_URL}/api${endpoint}`, { ...options, headers });
-  if (!response.ok) throw new Error(await response.text());
-  return response.json();
+// --- FIXED CORS TO HANDLE VERCEL PREFLIGHT OPTIONS PROPERLY ---
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || origin.endsWith('.vercel.app') || origin.includes('localhost')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-visitor-id']
+}));
+
+mongoose.connect(process.env.MONGO_URI).then(() => console.log("MongoDB Connected"));
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+});
+
+// --- SCHEMAS ---
+const UserSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true },
+  phone: { type: String, unique: true, sparse: true }, 
+  password: { type: String }, 
+  role: { type: String, default: 'user' },
+  cart: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
+  wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }]
+});
+const User = mongoose.model('User', UserSchema);
+
+const OtpSchema = new mongoose.Schema({
+  phone: { type: String, required: true },
+  code: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now, expires: 300 } 
+});
+const Otp = mongoose.model('Otp', OtpSchema);
+
+const ProductSchema = new mongoose.Schema({
+  name: String, price: Number, image: String,
+  category: { type: String, default: 'luxury' },
+  variants: [{ color: String, image: String }] 
+});
+const Product = mongoose.model('Product', ProductSchema);
+
+const VisitorLogSchema = new mongoose.Schema({
+  visitorId: String, ip: String, timestamp: { type: Date, default: Date.now }
+});
+const VisitorLog = mongoose.model('VisitorLog', VisitorLogSchema);
+
+app.use((req, res, next) => {
+  const visitorId = req.headers['x-visitor-id'] || 'anonymous';
+  const ip = req.ip || req.connection.remoteAddress;
+  VisitorLog.create({ visitorId, ip }).catch(err => console.error("Log error", err));
+  next();
+});
+
+const requireAuth = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ error: "Unauthorized" });
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.userId = decoded.id;
+    req.userRole = decoded.role;
+    next();
+  } catch (err) { res.status(401).json({ error: "Invalid token" }); }
 };
 
-export function ProductCard({ p, user, handleDelete, fetchProducts, navigate, setCart }) {
-  const [isEditing, setIsEditing] = useState(false);
-  const imageUrls = p.image ? p.image.split('|').map(url => url.trim()).filter(Boolean) : [];
-  const [currentImage, setCurrentImage] = useState('');
-  const { wishlist, setWishlist } = useContext(AppContext);
-  const inWishlist = wishlist?.some(item => item._id === p._id);
-  const [selectedSize, setSelectedSize] = useState('');
-  const [showSizeGuide, setShowSizeGuide] = useState(false);
-  const [showReviews, setShowReviews] = useState(false); 
+// --- CLASSIC USERNAME/PASSWORD ROUTES ---
+app.post('/api/auth/signup', async (req, res) => {
+  const { username, password, role } = req.body;
+  
+  // Guard clause to prevent .trim() from throwing undefined errors
+  if (!username || !password) {
+    return res.status(400).json({ error: "Username and password required" });
+  }
+  
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await User.create({ username: username.trim(), password: hashedPassword, role: role || 'user' });
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET);
+    res.json({ token, user: { username: user.username, role: user.role, cart: [], wishlist: [] } });
+  } catch (error) { 
+    if (error.code === 11000) return res.status(400).json({ error: "Username already exists." });
+    res.status(500).json({ error: error.message }); 
+  }
+});
 
-  const [editForm, setEditForm] = useState({
-    name: p.name, price: p.price, image: p.image, category: p.category || 'luxury',
-    variantsText: p.variants ? p.variants.map(v => `${v.color}|${v.image}`).join(', ') : ''
+app.post('/api/auth/login', async (req, res) => {
+  const { username, password } = req.body;
+  
+  // Guard clause to handle missing or undefined username inputs safely
+  if (!username || !password) {
+    return res.status(400).json({ error: "Username and password are required" });
+  }
+
+  try {
+    const user = await User.findOne({ username: username.trim() }).populate('cart').populate('wishlist');
+    if (!user || !user.password || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ error: "Invalid username or password" });
+    }
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET);
+    res.json({ token, user: { username: user.username, phone: user.phone, role: user.role, cart: user.cart, wishlist: user.wishlist } });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// --- WIRELESS OTP AUTH ROUTES ---
+app.post('/api/auth/send-otp', async (req, res) => {
+  const { phone } = req.body;
+  if (!phone) return res.status(400).json({ error: "Phone number is required" });
+
+  try {
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    await Otp.deleteMany({ phone });
+    await Otp.create({ phone, code: otpCode });
+
+    console.log(`\n==========================================\n📲 [SMS GATEWAY SIMULATION] \nOTP Code for ${phone} is: ${otpCode}\n==========================================\n`);
+
+    res.json({ success: true, message: "OTP sent successfully!", debugOtp: otpCode });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.post('/api/auth/verify-otp', async (req, res) => {
+  const { phone, code } = req.body;
+  if (!phone || !code) return res.status(400).json({ error: "Phone and OTP code are required" });
+
+  try {
+    const otpRecord = await Otp.findOne({ phone, code });
+    if (!otpRecord) return res.status(401).json({ error: "Invalid or expired OTP code" });
+
+    let user = await User.findOne({ phone }).populate('cart').populate('wishlist');
+    
+    if (!user) {
+      const generatedUsername = `user_${phone.slice(-4)}${Math.floor(10 + Math.random() * 90)}`;
+      user = await User.create({
+        username: generatedUsername,
+        phone: phone,
+        role: 'user'
+      });
+    }
+
+    await Otp.deleteOne({ _id: otpRecord._id });
+
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET);
+    res.json({ token, user: { username: user.username, phone: user.phone, role: user.role, cart: user.cart || [], wishlist: user.wishlist || [] } });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// --- PRODUCT, CART, AND CHECKOUT ENDPOINTS ---
+app.get('/api/products', async (req, res) => { res.json(await Product.find()); });
+
+app.post('/api/products', requireAuth, async (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: "Forbidden" });
+  res.json(await Product.create(req.body));
+});
+
+app.put('/api/products/:id', requireAuth, async (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: "Forbidden" });
+  res.json(await Product.findByIdAndUpdate(req.params.id, req.body, { new: true }));
+});
+
+app.delete('/api/products/:id', requireAuth, async (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: "Forbidden" });
+  await Product.findByIdAndDelete(req.params.id); res.json({ success: true });
+});
+
+app.get('/api/cart', requireAuth, async (req, res) => {
+  const user = await User.findById(req.userId).populate('cart'); res.json({ cart: user.cart || [] });
+});
+
+app.post('/api/cart', requireAuth, async (req, res) => {
+  const { action, productId } = req.body; const user = await User.findById(req.userId);
+  if (action === 'add') user.cart.push(productId);
+  else if (action === 'remove') { const idx = user.cart.indexOf(productId); if (idx > -1) user.cart.splice(idx, 1); }
+  await user.save(); res.json({ cart: (await User.findById(req.userId).populate('cart')).cart });
+});
+
+app.get('/api/wishlist', requireAuth, async (req, res) => {
+  const user = await User.findById(req.userId).populate('wishlist'); res.json({ wishlist: user.wishlist || [] });
+});
+
+app.post('/api/wishlist', requireAuth, async (req, res) => {
+  const { action, productId } = req.body; const user = await User.findById(req.userId);
+  if (action === 'add') { if (!user.wishlist.includes(productId)) user.wishlist.push(productId); }
+  else if (action === 'remove') user.wishlist = user.wishlist.filter(id => id.toString() !== productId);
+  await user.save(); res.json({ wishlist: (await User.findById(req.userId).populate('wishlist')).wishlist });
+});
+
+app.post('/api/checkout', requireAuth, async (req, res) => {
+  const user = await User.findById(req.userId).populate('cart');
+  if (!user || user.cart.length === 0) return res.status(400).json({ error: "Cart empty" });
+  const total = user.cart.reduce((s, i) => s + i.price, 0);
+  await transporter.sendMail({
+    from: process.env.EMAIL_USER, to: process.env.EMAIL_USER,
+    subject: `🚨 NEW ORDER ALERT: Rs ${total}`, text: `User: ${user.username}\nPhone: ${user.phone || 'N/A'}`
   });
+  user.cart = []; await user.save(); res.json({ success: true });
+});
 
-  useEffect(() => {
-    if (imageUrls.length > 0) {
-      setCurrentImage(imageUrls[0]);
-    } else if (p.variants && p.variants.length > 0 && p.variants[0].image) {
-      setCurrentImage(p.variants[0].image);
-    } else {
-      setCurrentImage('/images/placeholder.jpg');
-    }
-  }, [p]);
+app.get('/api/admin', requireAuth, async (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: "Forbidden" });
+  res.json({ users: await User.find().select('-password'), logs: await VisitorLog.find().sort({ timestamp: -1 }).limit(100), productCount: await Product.countDocuments() });
+});
 
-  const handleAddToCart = async () => {
-    if (!user) return navigate('/auth');
-    if (!selectedSize) {
-      alert("Please select your shoe size before adding to cart!");
-      return;
-    }
-    try {
-      const res = await fetchAPI('/cart', { method: 'POST', body: JSON.stringify({ action: 'add', productId: p._id, size: selectedSize }) });
-      setCart(res.cart);
-      alert(`Added size ${selectedSize} to your cart!`);
-    } catch (err) { alert("Error adding to cart"); }
-  };
-
-  const handleToggleWishlist = async () => {
-    if (!user) return navigate('/auth');
-    try {
-      const action = inWishlist ? 'remove' : 'add';
-      const res = await fetchAPI('/wishlist', { method: 'POST', body: JSON.stringify({ action, productId: p._id }) });
-      setWishlist(res.wishlist);
-    } catch (err) { alert("Error updating wishlist"); }
-  };
-
-  const handleUpdate = async (e) => {
-    e.preventDefault();
-    try {
-      const variantsArray = editForm.variantsText ? editForm.variantsText.split(',').map(v => {
-          const parts = v.split('|');
-          return { color: parts[0]?.trim(), image: parts[1]?.trim() };
-      }).filter(v => v.color && v.image) : [];
-
-      await fetchAPI(`/products/${p._id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ ...editForm, price: Number(editForm.price), variants: variantsArray })
-      });
-      setIsEditing(false);
-      fetchProducts();
-    } catch (err) { alert("Failed to update"); }
-  };
-
-  const mainTitle = p.name.split(/(?=[a-z])/)[0]?.trim();
-  const subtitle = p.name.split(/(?=[a-z])/).slice(1).join('').trim();
-
-  // Color Visibility Constraints
-  const MAX_VISIBLE_COLORS = 4;
-  const totalVariants = p.variants || [];
-  const visibleVariants = totalVariants.slice(0, MAX_VISIBLE_COLORS);
-  const extraColorsCount = totalVariants.length - MAX_VISIBLE_COLORS;
-
-  return (
-    <div className="bg-white border border-stone-200/60 p-2 md:p-3 flex flex-col justify-between relative group rounded-sm shadow-sm hover:shadow-md transition-all duration-300">
-      <div className="absolute top-3 right-3 z-30 flex flex-col gap-2">
-        <button onClick={handleToggleWishlist} className={`p-1.5 rounded-full bg-white/95 border border-stone-100 shadow-sm transition-colors ${inWishlist ? 'text-red-500' : 'text-stone-400 hover:text-stone-900'}`}>
-          <Heart size={14} fill={inWishlist ? "currentColor" : "none"} strokeWidth={2} />
-        </button>
-        {user?.role === 'admin' && (
-          <>
-            <button type="button" onClick={() => setIsEditing(!isEditing)} className="p-1.5 rounded-full bg-white/95 border border-stone-100 shadow-sm text-stone-500 hover:text-stone-900">
-              <Pencil size={12} />
-            </button>
-            <button type="button" onClick={() => handleDelete(p._id)} className="p-1.5 rounded-full bg-white/95 border border-stone-100 shadow-sm text-stone-500 hover:text-red-600">
-              <Trash2 size={12} />
-            </button>
-          </>
-        )}
-      </div>
-
-      {isEditing ? (
-        <form onSubmit={handleUpdate} className="text-left space-y-2 p-1 z-20 bg-white">
-          <input type="text" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} className="w-full border p-1 text-xs" placeholder="Product Name" required />
-          <input type="number" value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} className="w-full border p-1 text-xs" placeholder="Price (INR)" required />
-          <input type="text" value={editForm.image} onChange={e => setEditForm({...editForm, image: e.target.value})} className="w-full border p-1 text-xs" placeholder="Images (Pipe | Separated)" />
-          <select value={editForm.category} onChange={e => setEditForm({...editForm, category: e.target.value})} className="w-full border p-1 text-xs">
-            <option value="luxury">Trending Arrivals</option>
-            <option value="bellis">Bellis</option>
-            <option value="stiletto">Stiletto</option>
-            <option value="wedges">Wedges</option>
-            <option value="platform">Platform</option>
-            <option value="kitten">Kitten</option>
-            <option value="summer">Summer Special</option>
-            <option value="casual">Casual Wear</option>
-          </select>
-          <textarea value={editForm.variantsText} onChange={e => setEditForm({...editForm, variantsText: e.target.value})} className="w-full border p-1 text-xs h-12" placeholder="Variants (Color|Image, Color|Image)" />
-          <div className="flex gap-1 pt-1">
-            <button type="submit" className="bg-stone-900 text-white px-2 py-1 text-[10px] uppercase flex-1">Save</button>
-            <button type="button" onClick={() => setIsEditing(false)} className="bg-stone-200 text-stone-800 px-2 py-1 text-[10px] uppercase flex-1">Cancel</button>
-          </div>
-        </form>
-      ) : (
-        <div className="flex flex-col h-full justify-between">
-          <div>
-            <Link to={`/product/${p._id}`} className="block w-full bg-stone-50 border border-stone-50 overflow-hidden relative aspect-[4/5] rounded-xs group">
-              <img 
-                src={currentImage} 
-                alt={p.name} 
-                className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-500" 
-              />
-            </Link>
-
-            <div className="text-left mt-2.5">
-              <Link to={`/product/${p._id}`} className="block hover:opacity-80">
-                <h3 className="text-[11px] md:text-xs font-semibold uppercase tracking-wider text-stone-900 truncate">{mainTitle}</h3>
-                {subtitle && <p className="text-[9px] md:text-[10px] text-stone-500 tracking-wide mt-0.5 truncate">{subtitle}</p>}
-              </Link>
-              <p className="text-stone-900 font-bold text-[11px] md:text-xs mt-1">Rs {Number(p.price).toLocaleString('en-IN')}</p>
-              
-              {totalVariants.length > 0 && (
-                <div className="flex gap-1.5 mt-2 mb-1 items-center flex-wrap">
-                  {visibleVariants.map((v, idx) => {
-                    // RESTORED CUSTOM COLOR DICTIONARY MAP
-                    const colorMap = {
-                      'cream': '#fdf6e2',
-                      'green': '#2e5a44',
-                      'bloody red': '#990000',
-                      'silver': '#e0e0e0',
-                      'nude': '#e6ba9a',
-                      'pista': '#98ff98',
-                      'peach': '#ffcba4',
-                      'darkest red': '#4a0404',
-                      'mixed red and black': 'linear-gradient(135deg, #cc0000 50%, #000000 50%)',
-                      'mixed brown and nude': 'linear-gradient(135deg, #5c4033 50%, #e6ba9a 50%)',
-                      'polka dots(red ,black )': 'radial-gradient(#000000 20%, transparent 20%), #cc0000',
-                      'black': '#000000',
-                      'white': '#ffffff',
-                      'grey': '#808080',
-                      'brown': '#5c4033',
-                      'maroon': '#800000',
-                      'gold': '#ffd700',
-                      'blue': '#1e3d59',
-                      'skyblue': '#87ceeb',
-                      'pink': '#ffb6c1',
-                      'tan': '#d2b48c',
-                      'cheetah': '#cca43b',
-                      'leopard': '#b5651d',
-                      'champagne': '#f7e7ce',
-                      'rose gold': '#b76e79',
-                      'lavender': '#e6e6fa',
-                      'mint': '#aaf0d1',
-                      'charcoal': '#36454f'
-                    };
-
-                    const cleanColorName = v.color ? v.color.toLowerCase().trim() : '';
-                    const finalBg = colorMap[cleanColorName] || v.color || '#ccc';
-
-                    return (
-                      <button 
-                        key={idx} 
-                        type="button"
-                        onClick={() => v.image && setCurrentImage(v.image)} 
-                        title={v.color || 'Variant'}
-                        className="w-3.5 h-3.5 md:w-4 md:h-4 rounded-full border border-stone-300 hover:scale-110 hover:border-stone-800 transition-all shadow-sm focus:outline-none"
-                        style={{ background: finalBg, backgroundColor: finalBg.startsWith('linear') || finalBg.startsWith('radial') ? 'transparent' : finalBg }}
-                      />
-                    );
-                  })}
-                  {extraColorsCount > 0 && (
-                    <span className="text-[9px] md:text-[10px] text-stone-400 font-medium tracking-wider pl-0.5">
-                      +{extraColorsCount} Colors
-                    </span>
-                  )}
-                </div>
-              )}
-
-              <div className="mt-2.5">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-[8px] md:text-[9px] uppercase tracking-widest text-stone-400 font-bold">Select Size</span>
-                  <button type="button" onClick={() => setShowSizeGuide(true)} className="text-[8px] md:text-[9px] uppercase text-stone-500 underline tracking-widest flex items-center gap-0.5 hover:text-stone-900">
-                    <Ruler size={9} /> Guide
-                  </button>
-                </div>
-                <div className="grid grid-cols-5 gap-1">
-                  {["36", "37", "38", "39", "40"].map(size => (
-                    <button 
-                      key={size} 
-                      type="button"
-                      onClick={() => setSelectedSize(size)} 
-                      className={`border text-[9px] md:text-[10px] py-1 text-center font-medium transition-colors rounded-xs ${selectedSize === size ? 'bg-stone-900 text-white border-stone-900' : 'border-stone-200 text-stone-700 bg-stone-50/50 hover:border-stone-400'}`}
-                    >
-                      {size}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-3 pt-2 border-t border-stone-100 space-y-1">
-            <button type="button" onClick={handleAddToCart} className="w-full bg-stone-900 text-white py-1.5 text-[9px] md:text-[10px] uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors rounded-xs">
-              Add To Bag
-            </button>
-            <button type="button" onClick={() => setShowReviews(true)} className="w-full bg-stone-50 text-stone-700 border border-stone-200 py-1 text-[8px] md:text-[9px] uppercase tracking-widest font-medium hover:bg-stone-100 transition-colors flex items-center justify-center gap-1 rounded-xs">
-              ★ View Reviews
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-function ProductDetailPage() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const { user, setCart } = useContext(AppContext);
-  const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [activeImage, setActiveImage] = useState('');
-  const [selectedSize, setSelectedSize] = useState('');
-
-  useEffect(() => {
-    setLoading(true);
-    fetch(`${API_URL}/api/products`)
-      .then((res) => res.json())
-      .then((data) => {
-        const found = data.find((p) => p._id === id);
-        if (found) {
-          setProduct(found);
-          const urls = found.image ? found.image.split('|').map(u => u.trim()).filter(Boolean) : [];
-          setActiveImage(urls[0] || '/images/placeholder.jpg');
-        }
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        setLoading(false);
-      });
-  }, [id]);
-
-  if (loading) {
-    return <div className="text-center py-24 text-xs uppercase tracking-widest text-stone-400">Loading Style Context...</div>;
-  }
-
-  if (!product) {
-    return (
-      <div className="text-center py-24 max-w-md mx-auto px-4">
-        <p className="text-sm text-stone-500 uppercase tracking-wider mb-6">Product presentation footprint not found.</p>
-        <Link to="/" className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-stone-900 font-bold underline"><ArrowLeft size={14} /> Return Home</Link>
-      </div>
-    );
-  }
-
-  const imagesList = product.image ? product.image.split('|').map(u => u.trim()).filter(Boolean) : [];
-
-  const handleDetailedAdd = async () => {
-    if (!user) return navigate('/auth');
-    if (!selectedSize) {
-      alert("Please select your shoe size configuration!");
-      return;
-    }
-    try {
-      const res = await fetchAPI('/cart', { method: 'POST', body: JSON.stringify({ action: 'add', productId: product._id, size: selectedSize }) });
-      setCart(res.cart);
-      alert(`Successfully added size ${selectedSize} to bag.`);
-    } catch (err) {
-      alert("Error adding context to bag");
-    }
-  };
-
-  return (
-    <div className="max-w-6xl mx-auto px-4 py-8 md:py-16">
-      <button onClick={() => navigate(-1)} className="mb-8 flex items-center gap-2 text-xs uppercase tracking-widest text-stone-600 hover:text-stone-900 transition-colors">
-        <ArrowLeft size={16} /> Back to Catalog
-      </button>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
-        <div className="space-y-4">
-          <div className="bg-stone-50 border border-stone-100 rounded-sm overflow-hidden aspect-[4/5] flex items-center justify-center p-4">
-            <img src={activeImage} alt={product.name} className="w-full h-full object-contain mix-blend-multiply" />
-          </div>
-          {imagesList.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              {imagesList.map((img, index) => (
-                <button key={index} onClick={() => setActiveImage(img)} className={`w-20 h-20 border p-1 bg-stone-50 rounded-xs flex-shrink-0 ${activeImage === img ? 'border-stone-900' : 'border-stone-200'}`}>
-                  <img src={img} alt="" className="w-full h-full object-contain mix-blend-multiply" />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="text-left space-y-6">
-          <div>
-            <span className="text-[10px] uppercase tracking-widest font-bold text-stone-400 bg-stone-100 px-2.5 py-1 rounded-sm">{product.category || 'Luxury Design'}</span>
-            <h1 className="text-2xl md:text-3xl font-light uppercase tracking-wide text-stone-900 mt-3">{product.name}</h1>
-            <p className="text-xl font-bold text-stone-900 mt-2">Rs. {Number(product.price).toLocaleString('en-IN')}</p>
-          </div>
-
-          <hr className="border-stone-200" />
-
-          <div className="space-y-3">
-            <label className="text-xs uppercase tracking-widest text-stone-500 font-medium block">Select Size (EU)</label>
-            <div className="flex gap-2 flex-wrap">
-              {["36", "37", "38", "39", "40"].map((size) => (
-                <button key={size} onClick={() => setSelectedSize(size)} className={`border text-xs w-12 h-12 flex items-center justify-center font-semibold transition-all rounded-xs ${selectedSize === size ? 'bg-stone-900 text-white border-stone-900 shadow-md' : 'border-stone-200 text-stone-700 hover:border-stone-400 bg-white'}`}>
-                  {size}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <button onClick={handleDetailedAdd} className="w-full bg-stone-900 text-white py-4 uppercase tracking-widest text-xs font-semibold hover:bg-stone-800 transition-colors shadow-sm flex items-center justify-center gap-2">
-            <ShoppingBag size={16} /> Add Luxury Bag Selection
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// MANDATORY SYSTEM FIX: Explicitly export ProductDetailPage as the default target module
-export default ProductDetailPage;
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
