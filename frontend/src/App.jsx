@@ -137,6 +137,11 @@ function AuthPlaceholder() {
   const [authMethod, setAuthMethod] = useState('email'); // 'email' or 'phone'
   const [message, setMessage] = useState('');
   
+  // OTP Flow States
+  const [otpSent, setOtpSent] = useState(false);
+  const [receivedOtp, setReceivedOtp] = useState(''); // Stores the mock/trial OTP
+  const [userEnteredOtp, setUserEnteredOtp] = useState('');
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -144,24 +149,66 @@ function AuthPlaceholder() {
     password: ''
   });
 
+  // 1. Request Trial OTP for Phone Login
+  const handleRequestOtp = async (e) => {
+    e.preventDefault();
+    setMessage('');
+    if (!formData.phone) {
+      setMessage('Please enter a valid phone number.');
+      return;
+    }
+
+    try {
+      const data = await fetchAPI('/auth/send-otp', {
+        method: 'POST',
+        body: JSON.stringify({ phone: formData.phone.trim() })
+      });
+      
+      setOtpSent(true);
+      // Store the trial OTP returned from backend (e.g., "123456" or a randomized trial code)
+      if (data.otp) {
+        setReceivedOtp(data.otp);
+        setMessage(`Trial OTP generated: ${data.otp}. Enter it below to log in.`);
+      } else {
+        setMessage('Trial OTP sent to your phone number.');
+      }
+    } catch (err) {
+      setMessage(err.message || 'Failed to send trial OTP.');
+    }
+  };
+
+  // 2. Submit Main Authentication (Email Login, Register, or Phone OTP Verification)
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage('');
-    
-    const endpoint = isLogin ? '/auth/login' : '/auth/register';
-      
-    // Construct a payload that satisfies backend validation checks
-    const payload = {
-      password: formData.password || "",
-      name: !isLogin ? (formData.name || "") : undefined,
-      
-      // Send both parameters as valid trimmed strings so backend .trim() works
-      email: (authMethod === 'email' || !isLogin) ? (formData.email || "").trim() : "",
-      phone: (authMethod === 'phone' || !isLogin) ? (formData.phone || "").trim() : "",
-      
-      // If your backend uses a shared identifier key, include it here too
-      identifier: authMethod === 'email' ? (formData.email || "").trim() : (formData.phone || "").trim()
-    };
+
+    let endpoint = '';
+    let payload = {};
+
+    if (!isLogin) {
+      // Registration Flow
+      endpoint = '/auth/register';
+      payload = {
+        name: formData.name,
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        password: formData.password
+      };
+    } else if (authMethod === 'email') {
+      // Email Login Flow
+      endpoint = '/auth/login';
+      payload = {
+        email: formData.email.trim(),
+        password: formData.password
+      };
+    } else {
+      // Phone OTP Verification Flow
+      endpoint = '/auth/verify-otp';
+      payload = {
+        phone: formData.phone.trim(),
+        otp: userEnteredOtp.trim()
+      };
+    }
 
     try {
       const data = await fetchAPI(endpoint, {
@@ -181,7 +228,7 @@ function AuthPlaceholder() {
       }
     } catch (err) {
       console.error(err);
-      setMessage(err.message || 'Authentication credentials rejected. Please try again.');
+      setMessage(err.message || 'Authentication failed. Please verify your details.');
     }
   };
 
@@ -192,7 +239,7 @@ function AuthPlaceholder() {
       </h2>
 
       {message && (
-        <div className="p-3 text-[10px] uppercase tracking-wider mb-4 text-center bg-stone-50 border border-stone-200 text-stone-600 max-h-32 overflow-y-auto">
+        <div className="p-3 text-[10px] uppercase tracking-wider mb-4 text-center bg-stone-50 border border-stone-200 text-stone-600">
           {message}
         </div>
       )}
@@ -201,7 +248,7 @@ function AuthPlaceholder() {
         <div className="flex border-b border-stone-200 mb-6 text-xs uppercase tracking-wider">
           <button 
             type="button"
-            onClick={() => { setAuthMethod('email'); setMessage(''); }} 
+            onClick={() => { setAuthMethod('email'); setOtpSent(false); setMessage(''); }} 
             className={`flex-1 pb-2 text-center border-b font-medium transition-colors ${authMethod === 'email' ? 'border-stone-900 text-stone-900' : 'border-transparent text-stone-400'}`}
           >
             Email Access
@@ -211,27 +258,73 @@ function AuthPlaceholder() {
             onClick={() => { setAuthMethod('phone'); setMessage(''); }} 
             className={`flex-1 pb-2 text-center border-b font-medium transition-colors ${authMethod === 'phone' ? 'border-stone-900 text-stone-900' : 'border-transparent text-stone-400'}`}
           >
-            Phone Access
+            Phone OTP Access
           </button>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4 text-left">
-        {!isLogin && (
+      {/* Conditional Form Rendering based on login type */}
+      {isLogin && authMethod === 'phone' ? (
+        // PHONE OTP LOGIN FORM
+        <form onSubmit={otpSent ? handleSubmit : handleRequestOtp} className="space-y-4 text-left">
           <div>
-            <label className="block text-[9px] uppercase tracking-widest text-stone-400 font-bold mb-1">Full Name</label>
+            <label className="block text-[9px] uppercase tracking-widest text-stone-400 font-bold mb-1">Phone Number</label>
             <input 
-              type="text" 
+              type="tel" 
               required
-              value={formData.name}
-              onChange={e => setFormData({...formData, name: e.target.value})}
-              className="w-full border border-stone-200 p-2 text-xs rounded-xs focus:outline-stone-900" 
-              placeholder="Apurva Tonge"
+              disabled={otpSent}
+              value={formData.phone}
+              onChange={e => setFormData({...formData, phone: e.target.value})}
+              className="w-full border border-stone-200 p-2 text-xs rounded-xs focus:outline-stone-900 disabled:bg-stone-50 text-stone-600" 
+              placeholder="e.g. 8432171256"
             />
           </div>
-        )}
 
-        {(authMethod === 'email' || !isLogin) && (
+          {otpSent && (
+            <div>
+              <label className="block text-[9px] uppercase tracking-widest text-stone-400 font-bold mb-1">Enter Trial OTP</label>
+              <input 
+                type="text" 
+                required
+                value={userEnteredOtp}
+                onChange={e => setUserEnteredOtp(e.target.value)}
+                className="w-full border border-stone-200 p-2 text-xs rounded-xs focus:outline-stone-900 font-mono tracking-widest" 
+                placeholder="e.g. 123456"
+              />
+            </div>
+          )}
+
+          <button type="submit" className="w-full bg-stone-900 text-white py-2.5 text-[10px] uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors pt-3">
+            {otpSent ? 'Verify OTP & Login' : 'Get Trial OTP'}
+          </button>
+          
+          {otpSent && (
+            <button 
+              type="button" 
+              onClick={() => { setOtpSent(false); setUserEnteredOtp(''); setMessage(''); }}
+              className="w-full text-center text-[10px] text-stone-400 uppercase tracking-widest hover:text-stone-900"
+            >
+              Change Phone Number
+            </button>
+          )}
+        </form>
+      ) : (
+        // EMAIL LOGIN OR REGISTRATION FORM
+        <form onSubmit={handleSubmit} className="space-y-4 text-left">
+          {!isLogin && (
+            <div>
+              <label className="block text-[9px] uppercase tracking-widest text-stone-400 font-bold mb-1">Full Name</label>
+              <input 
+                type="text" 
+                required
+                value={formData.name}
+                onChange={e => setFormData({...formData, name: e.target.value})}
+                className="w-full border border-stone-200 p-2 text-xs rounded-xs focus:outline-stone-900" 
+                placeholder="Apurva Tonge"
+              />
+            </div>
+          )}
+
           <div>
             <label className="block text-[9px] uppercase tracking-widest text-stone-400 font-bold mb-1">Email Address</label>
             <input 
@@ -240,46 +333,46 @@ function AuthPlaceholder() {
               value={formData.email}
               onChange={e => setFormData({...formData, email: e.target.value})}
               className="w-full border border-stone-200 p-2 text-xs rounded-xs focus:outline-stone-900" 
-              placeholder="luxury@example.com"
+              placeholder="tongeapurva4@gmail.com"
             />
           </div>
-        )}
 
-        {(authMethod === 'phone' || !isLogin) && (
+          {!isLogin && (
+            <div>
+              <label className="block text-[9px] uppercase tracking-widest text-stone-400 font-bold mb-1">Phone Number</label>
+              <input 
+                type="tel" 
+                required
+                value={formData.phone}
+                onChange={e => setFormData({...formData, phone: e.target.value})}
+                className="w-full border border-stone-200 p-2 text-xs rounded-xs focus:outline-stone-900" 
+                placeholder="8432171256"
+              />
+            </div>
+          )}
+
           <div>
-            <label className="block text-[9px] uppercase tracking-widest text-stone-400 font-bold mb-1">Phone Number</label>
+            <label className="block text-[9px] uppercase tracking-widest text-stone-400 font-bold mb-1">Security Password</label>
             <input 
-              type="tel" 
+              type="password" 
               required
-              value={formData.phone}
-              onChange={e => setFormData({...formData, phone: e.target.value})}
+              value={formData.password}
+              onChange={e => setFormData({...formData, password: e.target.value})}
               className="w-full border border-stone-200 p-2 text-xs rounded-xs focus:outline-stone-900" 
-              placeholder="e.g. 8432171256"
+              placeholder="••••••••"
             />
           </div>
-        )}
 
-        <div>
-          <label className="block text-[9px] uppercase tracking-widest text-stone-400 font-bold mb-1">Security Password</label>
-          <input 
-            type="password" 
-            required
-            value={formData.password}
-            onChange={e => setFormData({...formData, password: e.target.value})}
-            className="w-full border border-stone-200 p-2 text-xs rounded-xs focus:outline-stone-900" 
-            placeholder="••••••••"
-          />
-        </div>
-
-        <button type="submit" className="w-full bg-stone-900 text-white py-2.5 text-[10px] uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors pt-3">
-          {isLogin ? 'Authorize Access' : 'Register Profile'}
-        </button>
-      </form>
+          <button type="submit" className="w-full bg-stone-900 text-white py-2.5 text-[10px] uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors pt-3">
+            {isLogin ? 'Authorize Access' : 'Register Profile'}
+          </button>
+        </form>
+      )}
 
       <div className="mt-6 text-center pt-4 border-t border-stone-100">
         <button 
           type="button"
-          onClick={() => { setIsLogin(!isLogin); setMessage(''); }}
+          onClick={() => { setIsLogin(!isLogin); setOtpSent(false); setMessage(''); }}
           className="text-[10px] uppercase tracking-widest text-stone-500 hover:text-stone-900 underline underline-offset-4"
         >
           {isLogin ? "Don't have an account? Sign Up" : "Already registered? Sign In"}
