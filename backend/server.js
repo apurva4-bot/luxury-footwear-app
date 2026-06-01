@@ -187,10 +187,32 @@ app.get('/api/cart', requireAuth, async (req, res) => {
 });
 
 app.post('/api/cart', requireAuth, async (req, res) => {
-  const { action, productId } = req.body; const user = await User.findById(req.userId);
-  if (action === 'add') user.cart.push(productId);
-  else if (action === 'remove') { const idx = user.cart.indexOf(productId); if (idx > -1) user.cart.splice(idx, 1); }
-  await user.save(); res.json({ cart: (await User.findById(req.userId).populate('cart')).cart });
+  const { action, productId } = req.body; 
+  
+  if (!productId) {
+    return res.status(400).json({ error: "Product ID is required" });
+  }
+
+  try {
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    if (action === 'add') {
+      user.cart.push(productId);
+    } else if (action === 'remove') {
+      // Convert all items to string equivalents to guarantee a match, then filter out the target ID
+      user.cart = user.cart.filter(item => item.toString() !== productId.toString());
+    }
+
+    await user.save(); 
+    
+    // Crucial: Re-populate the cart so the frontend receives full item details (name, price, image)
+    const updatedUser = await User.findById(req.userId).populate('cart');
+    res.json({ cart: updatedUser.cart || [] });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.get('/api/wishlist', requireAuth, async (req, res) => {
