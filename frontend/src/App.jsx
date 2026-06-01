@@ -380,24 +380,27 @@ function AuthPlaceholder() {
 export default AuthPlaceholder;
 function CartPlaceholder() {
   const { cart, setCart } = useContext(AppContext);
-  const [loadingId, setLoadingId] = useState(null); // Optional loader tracking
+  const [loadingId, setLoadingId] = useState(null);
 
   const BACKEND_URL = "https://luxury-footwear-app.onrender.com";
 
-  // --- SYNCS QUANTITY UPDATES TO RENDER BACKEND ---
-  const updateQuantity = async (itemId, selectedColor, newQty) => {
+  // --- 1. SYNC QUANTITY LOGIC TO LOCAL STATE ---
+  const updateQuantity = (itemId, selectedColor, newQty) => {
+    // If quantity is dropped below 1, trigger the backend removal system automatically
     if (newQty < 1) {
       removeCartItem(itemId);
       return;
     }
-
-    // Update local state instantly so UI feels snappy
+    
+    // Safely update quantity in local browser state
     setCart(cart.map(item => 
-      (item._id === itemId) ? { ...item, quantity: newQty } : item
+      (item && item._id === itemId) 
+        ? { ...item, quantity: Number(newQty) } 
+        : item
     ));
   };
 
-  // --- REWIRED TO DELETE COMPLETELY FROM DATABASE ---
+  // --- 2. CONNECTED REMOVE TRIGGER TO YOUR RENDER DATABASE ---
   const removeCartItem = async (itemId) => {
     setLoadingId(itemId);
     const token = localStorage.getItem('token');
@@ -417,23 +420,26 @@ function CartPlaceholder() {
 
       const data = await res.json();
       if (res.ok) {
-        setCart(data.cart || []); // This saves the cleanly filtered server array back to state
+        // Enforce the newly filtered populated database list returned by your backend
+        setCart(data.cart || []);
       } else {
-        console.error("Backend removal failed:", data.error);
+        console.error("Database deletion reported an error:", data.error);
       }
     } catch (err) {
-      console.error("Network error removing item:", err);
+      console.error("Network fault during item removal:", err);
     } finally {
       setLoadingId(null);
     }
   };
 
-  // --- ROBUST PRICE & TOTAL CALCULATION ---
+  // --- 3. ROBUST, DEFENSIVE ARITHMETIC TO PREVENT NaN AND ₹0 ERRORS ---
   const cartSubtotal = cart ? cart.reduce((sum, item) => {
     if (!item) return sum;
-    // Quantities can sometimes fall back to 1 if not explicitly set in a database array schema
-    const qty = item.quantity ? Number(item.quantity) : 1;
-    const price = item.price ? Number(item.price) : 0;
+    
+    // Fallback protection: if quantity or price are missing/strings, parse them securely
+    const qty = item.quantity && !isNaN(Number(item.quantity)) ? Number(item.quantity) : 1;
+    const price = item.price && !isNaN(Number(item.price)) ? Number(item.price) : 0;
+    
     return sum + (price * qty);
   }, 0) : 0;
 
@@ -452,7 +458,11 @@ function CartPlaceholder() {
           {/* LEFT: CART ITEMS LIST */}
           <div className="lg:col-span-2 divide-y divide-stone-200 border-t border-b border-stone-200">
             {cart.map((item, idx) => {
-              if (!item) return null; // Defensive check to avoid crashing if entry is null
+              if (!item) return null; // Guard clause against broken structural items
+              
+              const currentQty = item.quantity && !isNaN(Number(item.quantity)) ? Number(item.quantity) : 1;
+              const currentPrice = item.price && !isNaN(Number(item.price)) ? Number(item.price) : 0;
+
               return (
                 <div key={`${item._id}-${idx}`} className="py-5 flex gap-4 items-center justify-between">
                   <div className="flex gap-4 items-center">
@@ -467,7 +477,7 @@ function CartPlaceholder() {
                         <p className="text-[11px] text-stone-400 capitalize">Variant: {item.selectedColor}</p>
                       )}
                       <p className="text-xs font-medium text-stone-900 mt-2">
-                        ₹{item.price ? Number(item.price).toLocaleString('en-IN') : '0'}
+                        ₹{currentPrice.toLocaleString('en-IN')}
                       </p>
                     </div>
                   </div>
@@ -476,20 +486,23 @@ function CartPlaceholder() {
                   <div className="flex flex-col items-end gap-3">
                     <div className="flex items-center border border-stone-200">
                       <button 
-                        onClick={() => updateQuantity(item._id, item.selectedColor, (item.quantity || 1) - 1)}
-                        className="px-2 py-1 text-stone-500 hover:bg-stone-50 text-xs"
+                        type="button"
+                        onClick={() => updateQuantity(item._id, item.selectedColor, currentQty - 1)}
+                        className="px-2 py-1 text-stone-500 hover:bg-stone-50 text-xs select-none"
                       >
                         –
                       </button>
-                      <span className="px-3 text-xs font-medium text-stone-900">{item.quantity || 1}</span>
+                      <span className="px-3 text-xs font-medium text-stone-900">{currentQty}</span>
                       <button 
-                        onClick={() => updateQuantity(item._id, item.selectedColor, (item.quantity || 1) + 1)}
-                        className="px-2 py-1 text-stone-500 hover:bg-stone-50 text-xs"
+                        type="button"
+                        onClick={() => updateQuantity(item._id, item.selectedColor, currentQty + 1)}
+                        className="px-2 py-1 text-stone-500 hover:bg-stone-50 text-xs select-none"
                       >
                         +
                       </button>
                     </div>
                     <button 
+                      type="button"
                       onClick={() => removeCartItem(item._id)}
                       disabled={loadingId === item._id}
                       className="text-[10px] uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors underline underline-offset-4 disabled:opacity-50"
@@ -522,7 +535,7 @@ function CartPlaceholder() {
               <span className="text-lg font-light">₹{grandTotal.toLocaleString('en-IN')}</span>
             </div>
 
-            <button className="w-full bg-stone-900 text-white py-3 text-xs uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors pt-3.5 shadow-sm">
+            <button type="button" className="w-full bg-stone-900 text-white py-3 text-xs uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors pt-3.5 shadow-sm">
               Proceed To Checkout
             </button>
             <p className="text-[10px] text-stone-400 tracking-wide text-center mt-3">
