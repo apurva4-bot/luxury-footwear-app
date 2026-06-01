@@ -605,7 +605,7 @@ function AdminPlaceholder() {
   const totalPriceVolume = products?.reduce((sum, item) => sum + (Number(item.price) || 0), 0) || 0;
   const averagePrice = totalProducts > 0 ? Math.round(totalPriceVolume / totalProducts) : 0;
 
-   = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage('');
     
