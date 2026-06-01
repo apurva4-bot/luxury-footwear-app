@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { AppContext } from './AppContext'; // Adjust path if your context file is located elsewhere
+import { AppContext } from './AppContext'; 
 
 export default function ProductDetailPage() {
   const { id } = useParams();
@@ -14,24 +14,29 @@ export default function ProductDetailPage() {
   const [selectedColor, setSelectedColor] = useState('');
   const [actionMessage, setActionMessage] = useState('');
 
-  // Hardcode your production backend link here
+  // Production backend link configuration
   const BACKEND_URL = "https://luxury-footwear-app.onrender.com";
 
   useEffect(() => {
     const fetchProductDetails = async () => {
       try {
+        setLoading(true);
+        // Scanning root products endpoint
         const res = await fetch(`${BACKEND_URL}/api/products`);
         if (!res.ok) throw new Error("Failed to load catalog products.");
         const products = await res.json();
         
-        // Find the specific product matching the route ID parameters
+        // Locate matching item id
         const foundProduct = products.find(p => p._id === id);
         if (!foundProduct) throw new Error("The requested luxury item could not be located.");
         
         setProduct(foundProduct);
-        setActiveImage(foundProduct.image);
+        setActiveImage(foundProduct.image || '');
+        
         if (foundProduct.variants && foundProduct.variants.length > 0) {
           setSelectedColor(foundProduct.variants[0].color);
+        } else {
+          setSelectedColor('Original');
         }
       } catch (err) {
         setError(err.message);
@@ -40,7 +45,9 @@ export default function ProductDetailPage() {
       }
     };
 
-    fetchProductDetails();
+    if (id) {
+      fetchProductDetails();
+    }
   }, [id]);
 
   const handleServerAction = async (targetEndpoint, actionType) => {
@@ -101,14 +108,15 @@ export default function ProductDetailPage() {
     <div style={{ maxWidth: '1100px', margin: '40px auto', padding: '0 20px', fontFamily: 'sans-serif', color: '#1c1b1b' }}>
       
       {actionMessage && (
-        <div style={{ backgroundColor: '#f5f5f4', border: '1px solid #e7e5e4', color: '#444', padding: '12px', marginBottom: '30px', textAlign: 'center', fontSize: '11px', uppercase: 'true', trackingSpacing: '1px', textTransform: 'uppercase' }}>
+        <div style={{ backgroundColor: '#f5f5f4', border: '1px solid #e7e5e4', color: '#444', padding: '12px', marginBottom: '30px', textAlign: 'center', fontSize: '11px', letterSpacing: '1px', textTransform: 'uppercase' }}>
           {actionMessage}
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'window.innerWidth > 768 ? "1fr 1fr" : "1fr"', gap: '50px' }} className="md:grid-cols-2 grid gap-10">
+      {/* Modern Clean Responsive CSS Grid System */}
+      <div style={{ display: 'grid', gap: '50px' }} className="md:grid-cols-2 grid-cols-1 grid">
         
-        {/* Left Side: Images Section */}
+        {/* Left Column: Visual Assets Display */}
         <div>
           <div style={{ border: '1px solid #f2f0ea', backgroundColor: '#faf9f6', overflow: 'hidden', marginBottom: '15px' }}>
             <img 
@@ -118,20 +126,20 @@ export default function ProductDetailPage() {
             />
           </div>
           
-          {/* Variants Grid */}
+          {/* Active Alternate Color Variants Component */}
           {product.variants && product.variants.length > 0 && (
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
               <div 
-                onClick={() => { setActiveImage(product.image); setSelectedColor('Default'); }}
-                style={{ width: '70px', height: '70px', border: activeImage === product.image ? '1px solid #111' : '1px solid #eee', cursor: 'pointer', p: '2px', backgroundColor: '#faf9f6' }}
+                onClick={() => { setActiveImage(product.image || ''); setSelectedColor('Original'); }}
+                style={{ width: '70px', height: '70px', border: activeImage === product.image ? '1px solid #111' : '1px solid #eee', cursor: 'pointer', padding: '2px', backgroundColor: '#faf9f6' }}
               >
-                <img src={product.image} alt="original" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={product.image} alt="original preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
               {product.variants.map((v, idx) => (
                 <div 
                   key={idx}
-                  onClick={() => { setActiveImage(v.image); setSelectedColor(v.color); }}
-                  style={{ width: '70px', height: '70px', border: activeImage === v.image ? '1px solid #111' : '1px solid #eee', cursor: 'pointer', p: '2px', backgroundColor: '#faf9f6' }}
+                  onClick={() => { setActiveImage(v.image || ''); setSelectedColor(v.color || 'Alternative'); }}
+                  style={{ width: '70px', height: '70px', border: activeImage === v.image ? '1px solid #111' : '1px solid #eee', cursor: 'pointer', padding: '2px', backgroundColor: '#faf9f6' }}
                 >
                   <img src={v.image} alt={v.color} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
@@ -140,9 +148,9 @@ export default function ProductDetailPage() {
           )}
         </div>
 
-        {/* Right Side: Copy/Content Details Panel */}
+        {/* Right Column: Order Selection Options Panel */}
         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <span style={{ fontSize: '10px', textTransform: 'uppercase', trackingSpacing: '2px', color: '#a8a29e', fontWeight: 'bold', marginBottom: '8px', display: 'block' }}>
+          <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '2px', color: '#a8a29e', fontWeight: 'bold', marginBottom: '8px', display: 'block' }}>
             {product.category || 'Luxury Footwear'}
           </span>
           <h1 style={{ fontSize: '24px', fontWeight: 'normal', textTransform: 'uppercase', letterSpacing: '1px', margin: '0 0 15px 0', color: '#1c1b1b' }}>
@@ -163,13 +171,13 @@ export default function ProductDetailPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px' }}>
             <button 
               onClick={() => handleServerAction('cart', 'add')}
-              style={{ width: '100%', backgroundColor: '#1c1b1b', color: '#fff', padding: '15px', border: 'none', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '2px', fontWeight: 'bold', cursor: 'pointer', transition: 'background 0.2s' }}
+              style={{ width: '100%', backgroundColor: '#1c1b1b', color: '#fff', padding: '15px', border: 'none', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '2px', fontWeight: 'bold', cursor: 'pointer' }}
             >
               Add To Cart Bag
             </button>
             <button 
               onClick={() => handleServerAction('wishlist', 'add')}
-              style={{ width: '100%', backgroundColor: '#fff', color: '#1c1b1b', padding: '15px', border: '1px solid #1c1b1b', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '2px', cursor: 'pointer', transition: 'background 0.2s' }}
+              style={{ width: '100%', backgroundColor: '#fff', color: '#1c1b1b', padding: '15px', border: '1px solid #1c1b1b', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '2px', cursor: 'pointer' }}
             >
               Save To Wishlist Collection
             </button>

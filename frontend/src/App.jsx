@@ -568,7 +568,7 @@ function WishlistPlaceholder() {
       setWishlist(res.wishlist || []);
     } catch (err) {
       // Fallback local modification to ensure UI reactivity
-      setWishlist(wishlist.filter(item => item._id !== productId));
+   setWishlist(wishlist.filter(item => item && item._id.toString() !== productId.toString()));
     }
   };
 
