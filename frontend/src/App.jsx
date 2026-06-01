@@ -161,7 +161,10 @@ function AuthPlaceholder() {
     try {
       const data = await fetchAPI('/auth/send-otp', {
         method: 'POST',
-        body: JSON.stringify({ phone: formData.phone.trim() })
+        body: JSON.stringify({ 
+          phone: (formData.phone || "").trim(),
+          email: "" // Fallback protection 
+        })
       });
       
       setOtpSent(true);
@@ -189,24 +192,26 @@ function AuthPlaceholder() {
       // Registration Flow
       endpoint = '/auth/register';
       payload = {
-        name: formData.name,
-        email: formData.email.trim(),
-        phone: formData.phone.trim(),
-        password: formData.password
+        name: formData.name || "",
+        email: (formData.email || "").trim(),
+        phone: (formData.phone || "").trim(),
+        password: formData.password || ""
       };
     } else if (authMethod === 'email') {
       // Email Login Flow
       endpoint = '/auth/login';
       payload = {
-        email: formData.email.trim(),
-        password: formData.password
+        email: (formData.email || "").trim(),
+        password: formData.password || "",
+        phone: "" // Prevent backend from crashing on phone.trim()
       };
     } else {
       // Phone OTP Verification Flow
       endpoint = '/auth/verify-otp';
       payload = {
-        phone: formData.phone.trim(),
-        otp: userEnteredOtp.trim()
+        phone: (formData.phone || "").trim(),
+        otp: (userEnteredOtp || "").trim(),
+        email: "" // Prevent backend from crashing on email.trim() if checked here
       };
     }
 
@@ -360,7 +365,7 @@ function AuthPlaceholder() {
               onChange={e => setFormData({...formData, password: e.target.value})}
               className="w-full border border-stone-200 p-2 text-xs rounded-xs focus:outline-stone-900" 
               placeholder="••••••••"
-            />
+          />
           </div>
 
           <button type="submit" className="w-full bg-stone-900 text-white py-2.5 text-[10px] uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors pt-3">
