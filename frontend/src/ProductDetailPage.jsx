@@ -1,220 +1,189 @@
+import React, { useState, useEffect, useContext } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { AppContext } from './AppContext'; // Adjust path if your context file is located elsewhere
 
-import mongoose from 'mongoose';
-import cors from 'cors';
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
-import dotenv from 'dotenv';
-import nodemailer from 'nodemailer';
-
-dotenv.config();
-const app = express();
-app.use(express.json());
-
-// --- FIXED CORS TO HANDLE VERCEL PREFLIGHT OPTIONS PROPERLY ---
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || origin.endsWith('.vercel.app') || origin.includes('localhost')) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-visitor-id']
-}));
-
-mongoose.connect(process.env.MONGO_URI).then(() => console.log("MongoDB Connected"));
-
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
-});
-
-// --- SCHEMAS ---
-const UserSchema = new mongoose.Schema({
-  username: { type: String, required: true, unique: true },
-  phone: { type: String, unique: true, sparse: true }, 
-  password: { type: String }, 
-  role: { type: String, default: 'user' },
-  cart: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
-  wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }]
-});
-const User = mongoose.model('User', UserSchema);
-
-const OtpSchema = new mongoose.Schema({
-  phone: { type: String, required: true },
-  code: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now, expires: 300 } 
-});
-const Otp = mongoose.model('Otp', OtpSchema);
-
-const ProductSchema = new mongoose.Schema({
-  name: String, price: Number, image: String,
-  category: { type: String, default: 'luxury' },
-  variants: [{ color: String, image: String }] 
-});
-const Product = mongoose.model('Product', ProductSchema);
-
-const VisitorLogSchema = new mongoose.Schema({
-  visitorId: String, ip: String, timestamp: { type: Date, default: Date.now }
-});
-const VisitorLog = mongoose.model('VisitorLog', VisitorLogSchema);
-
-app.use((req, res, next) => {
-  const visitorId = req.headers['x-visitor-id'] || 'anonymous';
-  const ip = req.ip || req.connection.remoteAddress;
-  VisitorLog.create({ visitorId, ip }).catch(err => console.error("Log error", err));
-  next();
-});
-
-const requireAuth = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ error: "Unauthorized" });
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.userId = decoded.id;
-    req.userRole = decoded.role;
-    next();
-  } catch (err) { res.status(401).json({ error: "Invalid token" }); }
-};
-
-// --- CLASSIC USERNAME/PASSWORD ROUTES ---
-app.post('/api/auth/signup', async (req, res) => {
-  const { username, password, role } = req.body;
+export default function ProductDetailPage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { setCart, setWishlist } = useContext(AppContext);
   
-  // Guard clause to prevent .trim() from throwing undefined errors
-  if (!username || !password) {
-    return res.status(400).json({ error: "Username and password required" });
-  }
-  
-  try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await User.create({ username: username.trim(), password: hashedPassword, role: role || 'user' });
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET);
-    res.json({ token, user: { username: user.username, role: user.role, cart: [], wishlist: [] } });
-  } catch (error) { 
-    if (error.code === 11000) return res.status(400).json({ error: "Username already exists." });
-    res.status(500).json({ error: error.message }); 
-  }
-});
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [activeImage, setActiveImage] = useState('');
+  const [selectedColor, setSelectedColor] = useState('');
+  const [actionMessage, setActionMessage] = useState('');
 
-app.post('/api/auth/login', async (req, res) => {
-  const { username, password } = req.body;
-  
-  // Guard clause to handle missing or undefined username inputs safely
-  if (!username || !password) {
-    return res.status(400).json({ error: "Username and password are required" });
-  }
+  // Hardcode your production backend link here
+  const BACKEND_URL = "https://luxury-footwear-app.onrender.com";
 
-  try {
-    const user = await User.findOne({ username: username.trim() }).populate('cart').populate('wishlist');
-    if (!user || !user.password || !(await bcrypt.compare(password, user.password))) {
-      return res.status(401).json({ error: "Invalid username or password" });
-    }
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET);
-    res.json({ token, user: { username: user.username, phone: user.phone, role: user.role, cart: user.cart, wishlist: user.wishlist } });
-  } catch (error) { res.status(500).json({ error: error.message }); }
-});
+  useEffect(() => {
+    const fetchProductDetails = async () => {
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/products`);
+        if (!res.ok) throw new Error("Failed to load catalog products.");
+        const products = await res.json();
+        
+        // Find the specific product matching the route ID parameters
+        const foundProduct = products.find(p => p._id === id);
+        if (!foundProduct) throw new Error("The requested luxury item could not be located.");
+        
+        setProduct(foundProduct);
+        setActiveImage(foundProduct.image);
+        if (foundProduct.variants && foundProduct.variants.length > 0) {
+          setSelectedColor(foundProduct.variants[0].color);
+        }
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-// --- WIRELESS OTP AUTH ROUTES ---
-app.post('/api/auth/send-otp', async (req, res) => {
-  const { phone } = req.body;
-  if (!phone) return res.status(400).json({ error: "Phone number is required" });
+    fetchProductDetails();
+  }, [id]);
 
-  try {
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const handleServerAction = async (targetEndpoint, actionType) => {
+    setActionMessage('');
+    const token = localStorage.getItem('token');
     
-    await Otp.deleteMany({ phone });
-    await Otp.create({ phone, code: otpCode });
+    if (!token) {
+      setActionMessage("Please sign in to access your personal collection.");
+      setTimeout(() => navigate('/auth'), 1500);
+      return;
+    }
 
-    console.log(`\n==========================================\n📲 [SMS GATEWAY SIMULATION] \nOTP Code for ${phone} is: ${otpCode}\n==========================================\n`);
-
-    res.json({ success: true, message: "OTP sent successfully!", debugOtp: otpCode });
-  } catch (error) { res.status(500).json({ error: error.message }); }
-});
-
-app.post('/api/auth/verify-otp', async (req, res) => {
-  const { phone, code } = req.body;
-  if (!phone || !code) return res.status(400).json({ error: "Phone and OTP code are required" });
-
-  try {
-    const otpRecord = await Otp.findOne({ phone, code });
-    if (!otpRecord) return res.status(401).json({ error: "Invalid or expired OTP code" });
-
-    let user = await User.findOne({ phone }).populate('cart').populate('wishlist');
-    
-    if (!user) {
-      const generatedUsername = `user_${phone.slice(-4)}${Math.floor(10 + Math.random() * 90)}`;
-      user = await User.create({
-        username: generatedUsername,
-        phone: phone,
-        role: 'user'
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/${targetEndpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ action: actionType, productId: id })
       });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Action authorization failed.");
+
+      if (targetEndpoint === 'cart') {
+        setCart(data.cart);
+        setActionMessage("Item successfully added to your shopping bag.");
+      } else {
+        setWishlist(data.wishlist);
+        setActionMessage("Item safely saved to your private wishlist.");
+      }
+    } catch (err) {
+      setActionMessage(err.message);
     }
+  };
 
-    await Otp.deleteOne({ _id: otpRecord._id });
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh', fontFamily: 'sans-serif', letterSpacing: '2px', textTransform: 'uppercase', fontSize: '11px' }}>
+        Loading Curated Details...
+      </div>
+    );
+  }
 
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET);
-    res.json({ token, user: { username: user.username, phone: user.phone, role: user.role, cart: user.cart || [], wishlist: user.wishlist || [] } });
-  } catch (error) { res.status(500).json({ error: error.message }); }
-});
+  if (error || !product) {
+    return (
+      <div style={{ maxWidth: '400px', margin: '80px auto', textAlign: 'center', fontFamily: 'sans-serif', padding: '20px', border: '1px solid #eee' }}>
+        <p style={{ fontSize: '13px', color: '#666', textTransform: 'uppercase' }}>{error || "Item Unavailable"}</p>
+        <button onClick={() => navigate('/')} style={{ marginTop: '15px', background: '#111', color: '#fff', border: 'none', padding: '10px 20px', textTransform: 'uppercase', fontSize: '10px', cursor: 'pointer' }}>
+          Return To Gallery
+        </button>
+      </div>
+    );
+  }
 
-// --- PRODUCT, CART, AND CHECKOUT ENDPOINTS ---
-app.get('/api/products', async (req, res) => { res.json(await Product.find()); });
+  return (
+    <div style={{ maxWidth: '1100px', margin: '40px auto', padding: '0 20px', fontFamily: 'sans-serif', color: '#1c1b1b' }}>
+      
+      {actionMessage && (
+        <div style={{ backgroundColor: '#f5f5f4', border: '1px solid #e7e5e4', color: '#444', padding: '12px', marginBottom: '30px', textAlign: 'center', fontSize: '11px', uppercase: 'true', trackingSpacing: '1px', textTransform: 'uppercase' }}>
+          {actionMessage}
+        </div>
+      )}
 
-app.post('/api/products', requireAuth, async (req, res) => {
-  if (req.userRole !== 'admin') return res.status(403).json({ error: "Forbidden" });
-  res.json(await Product.create(req.body));
-});
+      <div style={{ display: 'grid', gridTemplateColumns: 'window.innerWidth > 768 ? "1fr 1fr" : "1fr"', gap: '50px' }} className="md:grid-cols-2 grid gap-10">
+        
+        {/* Left Side: Images Section */}
+        <div>
+          <div style={{ border: '1px solid #f2f0ea', backgroundColor: '#faf9f6', overflow: 'hidden', marginBottom: '15px' }}>
+            <img 
+              src={activeImage} 
+              alt={product.name} 
+              style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover' }} 
+            />
+          </div>
+          
+          {/* Variants Grid */}
+          {product.variants && product.variants.length > 0 && (
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <div 
+                onClick={() => { setActiveImage(product.image); setSelectedColor('Default'); }}
+                style={{ width: '70px', height: '70px', border: activeImage === product.image ? '1px solid #111' : '1px solid #eee', cursor: 'pointer', p: '2px', backgroundColor: '#faf9f6' }}
+              >
+                <img src={product.image} alt="original" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+              {product.variants.map((v, idx) => (
+                <div 
+                  key={idx}
+                  onClick={() => { setActiveImage(v.image); setSelectedColor(v.color); }}
+                  style={{ width: '70px', height: '70px', border: activeImage === v.image ? '1px solid #111' : '1px solid #eee', cursor: 'pointer', p: '2px', backgroundColor: '#faf9f6' }}
+                >
+                  <img src={v.image} alt={v.color} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-app.put('/api/products/:id', requireAuth, async (req, res) => {
-  if (req.userRole !== 'admin') return res.status(403).json({ error: "Forbidden" });
-  res.json(await Product.findByIdAndUpdate(req.params.id, req.body, { new: true }));
-});
+        {/* Right Side: Copy/Content Details Panel */}
+        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <span style={{ fontSize: '10px', textTransform: 'uppercase', trackingSpacing: '2px', color: '#a8a29e', fontWeight: 'bold', marginBottom: '8px', display: 'block' }}>
+            {product.category || 'Luxury Footwear'}
+          </span>
+          <h1 style={{ fontSize: '24px', fontWeight: 'normal', textTransform: 'uppercase', letterSpacing: '1px', margin: '0 0 15px 0', color: '#1c1b1b' }}>
+            {product.name}
+          </h1>
+          <p style={{ fontSize: '18px', color: '#444', margin: '0 0 30px 0', fontFamily: 'serif' }}>
+            Rs. {product.price?.toLocaleString('en-IN') || '0.00'}
+          </p>
 
-app.delete('/api/products/:id', requireAuth, async (req, res) => {
-  if (req.userRole !== 'admin') return res.status(403).json({ error: "Forbidden" });
-  await Product.findByIdAndDelete(req.params.id); res.json({ success: true });
-});
+          <hr style={{ border: 'none', borderTop: '1px solid #f3f2ef', marginBottom: '25px' }} />
 
-app.get('/api/cart', requireAuth, async (req, res) => {
-  const user = await User.findById(req.userId).populate('cart'); res.json({ cart: user.cart || [] });
-});
+          {selectedColor && (
+            <p style={{ fontSize: '11px', textTransform: 'uppercase', color: '#666', marginBottom: '20px' }}>
+              Selected Shade: <strong style={{ color: '#111' }}>{selectedColor}</strong>
+            </p>
+          )}
 
-app.post('/api/cart', requireAuth, async (req, res) => {
-  const { action, productId } = req.body; const user = await User.findById(req.userId);
-  if (action === 'add') user.cart.push(productId);
-  else if (action === 'remove') { const idx = user.cart.indexOf(productId); if (idx > -1) user.cart.splice(idx, 1); }
-  await user.save(); res.json({ cart: (await User.findById(req.userId).populate('cart')).cart });
-});
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px' }}>
+            <button 
+              onClick={() => handleServerAction('cart', 'add')}
+              style={{ width: '100%', backgroundColor: '#1c1b1b', color: '#fff', padding: '15px', border: 'none', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '2px', fontWeight: 'bold', cursor: 'pointer', transition: 'background 0.2s' }}
+            >
+              Add To Cart Bag
+            </button>
+            <button 
+              onClick={() => handleServerAction('wishlist', 'add')}
+              style={{ width: '100%', backgroundColor: '#fff', color: '#1c1b1b', padding: '15px', border: '1px solid #1c1b1b', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '2px', cursor: 'pointer', transition: 'background 0.2s' }}
+            >
+              Save To Wishlist Collection
+            </button>
+          </div>
 
-app.get('/api/wishlist', requireAuth, async (req, res) => {
-  const user = await User.findById(req.userId).populate('wishlist'); res.json({ wishlist: user.wishlist || [] });
-});
+          <div style={{ marginTop: '40px' }}>
+            <h4 style={{ textTransform: 'uppercase', fontSize: '11px', letterSpacing: '1px', marginBottom: '10px', fontWeight: 'bold' }}>Product Care & Identity</h4>
+            <p style={{ fontSize: '12px', color: '#78716c', lineHeight: '1.6', margin: 0 }}>
+              Crafted meticulously matching premier high-fashion criteria. Each shoe features carefully selected hardware architectures, comfort-lined inner molding layers, and high-tier premium grading accents built to endure beautiful long-term presentation.
+            </p>
+          </div>
 
-app.post('/api/wishlist', requireAuth, async (req, res) => {
-  const { action, productId } = req.body; const user = await User.findById(req.userId);
-  if (action === 'add') { if (!user.wishlist.includes(productId)) user.wishlist.push(productId); }
-  else if (action === 'remove') user.wishlist = user.wishlist.filter(id => id.toString() !== productId);
-  await user.save(); res.json({ wishlist: (await User.findById(req.userId).populate('wishlist')).wishlist });
-});
-
-app.post('/api/checkout', requireAuth, async (req, res) => {
-  const user = await User.findById(req.userId).populate('cart');
-  if (!user || user.cart.length === 0) return res.status(400).json({ error: "Cart empty" });
-  const total = user.cart.reduce((s, i) => s + i.price, 0);
-  await transporter.sendMail({
-    from: process.env.EMAIL_USER, to: process.env.EMAIL_USER,
-    subject: `🚨 NEW ORDER ALERT: Rs ${total}`, text: `User: ${user.username}\nPhone: ${user.phone || 'N/A'}`
-  });
-  user.cart = []; await user.save(); res.json({ success: true });
-});
-
-app.get('/api/admin', requireAuth, async (req, res) => {
-  if (req.userRole !== 'admin') return res.status(403).json({ error: "Forbidden" });
-  res.json({ users: await User.find().select('-password'), logs: await VisitorLog.find().sort({ timestamp: -1 }).limit(100), productCount: await Product.countDocuments() });
-});
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
+        </div>
+      </div>
+    </div>
+  );
+}
