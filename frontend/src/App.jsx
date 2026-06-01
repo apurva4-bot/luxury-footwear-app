@@ -380,24 +380,63 @@ function AuthPlaceholder() {
 export default AuthPlaceholder;
 function CartPlaceholder() {
   const { cart, setCart } = useContext(AppContext);
+  const [loadingId, setLoadingId] = useState(null); // Optional loader tracking
 
-  const updateQuantity = (itemId, selectedColor, newQty) => {
+  const BACKEND_URL = "https://luxury-footwear-app.onrender.com";
+
+  // --- SYNCS QUANTITY UPDATES TO RENDER BACKEND ---
+  const updateQuantity = async (itemId, selectedColor, newQty) => {
     if (newQty < 1) {
-      removeCartItem(itemId, selectedColor);
+      removeCartItem(itemId);
       return;
     }
+
+    // Update local state instantly so UI feels snappy
     setCart(cart.map(item => 
-      (item._id === itemId && item.selectedColor === selectedColor) 
-        ? { ...item, quantity: newQty } 
-        : item
+      (item._id === itemId) ? { ...item, quantity: newQty } : item
     ));
   };
 
-  const removeCartItem = (itemId, selectedColor) => {
-    setCart(cart.filter(item => !(item._id === itemId && item.selectedColor === selectedColor)));
+  // --- REWIRED TO DELETE COMPLETELY FROM DATABASE ---
+  const removeCartItem = async (itemId) => {
+    setLoadingId(itemId);
+    const token = localStorage.getItem('token');
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/cart`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          action: 'remove', 
+          productId: itemId 
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setCart(data.cart || []); // This saves the cleanly filtered server array back to state
+      } else {
+        console.error("Backend removal failed:", data.error);
+      }
+    } catch (err) {
+      console.error("Network error removing item:", err);
+    } finally {
+      setLoadingId(null);
+    }
   };
 
-  const cartSubtotal = cart?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
+  // --- ROBUST PRICE & TOTAL CALCULATION ---
+  const cartSubtotal = cart ? cart.reduce((sum, item) => {
+    if (!item) return sum;
+    // Quantities can sometimes fall back to 1 if not explicitly set in a database array schema
+    const qty = item.quantity ? Number(item.quantity) : 1;
+    const price = item.price ? Number(item.price) : 0;
+    return sum + (price * qty);
+  }, 0) : 0;
+
   const shippingFee = cartSubtotal >= 3000 || cartSubtotal === 0 ? 0 : 150;
   const grandTotal = cartSubtotal + shippingFee;
 
@@ -412,49 +451,55 @@ function CartPlaceholder() {
           
           {/* LEFT: CART ITEMS LIST */}
           <div className="lg:col-span-2 divide-y divide-stone-200 border-t border-b border-stone-200">
-            {cart.map((item, idx) => (
-              <div key={`${item._id}-${item.selectedColor || idx}`} className="py-5 flex gap-4 items-center justify-between">
-                <div className="flex gap-4 items-center">
-                  <img 
-                    src={item.image} 
-                    alt={item.name} 
-                    className="w-20 h-24 object-cover border border-stone-100 rounded-xs"
-                  />
-                  <div className="space-y-1 text-left">
-                    <h3 className="text-xs uppercase tracking-wider font-medium text-stone-900">{item.name}</h3>
-                    {item.selectedColor && (
-                      <p className="text-[11px] text-stone-400 capitalize">Variant: {item.selectedColor}</p>
-                    )}
-                    <p className="text-xs font-medium text-stone-900 mt-2">₹{item.price.toLocaleString('en-IN')}</p>
+            {cart.map((item, idx) => {
+              if (!item) return null; // Defensive check to avoid crashing if entry is null
+              return (
+                <div key={`${item._id}-${idx}`} className="py-5 flex gap-4 items-center justify-between">
+                  <div className="flex gap-4 items-center">
+                    <img 
+                      src={item.image} 
+                      alt={item.name} 
+                      className="w-20 h-24 object-cover border border-stone-100 rounded-xs"
+                    />
+                    <div className="space-y-1 text-left">
+                      <h3 className="text-xs uppercase tracking-wider font-medium text-stone-900">{item.name}</h3>
+                      {item.selectedColor && (
+                        <p className="text-[11px] text-stone-400 capitalize">Variant: {item.selectedColor}</p>
+                      )}
+                      <p className="text-xs font-medium text-stone-900 mt-2">
+                        ₹{item.price ? Number(item.price).toLocaleString('en-IN') : '0'}
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                {/* CONTROLS QUANTITY & REMOVAL */}
-                <div className="flex flex-col items-end gap-3">
-                  <div className="flex items-center border border-stone-200">
+                  {/* CONTROLS QUANTITY & REMOVAL */}
+                  <div className="flex flex-col items-end gap-3">
+                    <div className="flex items-center border border-stone-200">
+                      <button 
+                        onClick={() => updateQuantity(item._id, item.selectedColor, (item.quantity || 1) - 1)}
+                        className="px-2 py-1 text-stone-500 hover:bg-stone-50 text-xs"
+                      >
+                        –
+                      </button>
+                      <span className="px-3 text-xs font-medium text-stone-900">{item.quantity || 1}</span>
+                      <button 
+                        onClick={() => updateQuantity(item._id, item.selectedColor, (item.quantity || 1) + 1)}
+                        className="px-2 py-1 text-stone-500 hover:bg-stone-50 text-xs"
+                      >
+                        +
+                      </button>
+                    </div>
                     <button 
-                      onClick={() => updateQuantity(item._id, item.selectedColor, item.quantity - 1)}
-                      className="px-2 py-1 text-stone-500 hover:bg-stone-50 text-xs"
+                      onClick={() => removeCartItem(item._id)}
+                      disabled={loadingId === item._id}
+                      className="text-[10px] uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors underline underline-offset-4 disabled:opacity-50"
                     >
-                      –
-                    </button>
-                    <span className="px-3 text-xs font-medium text-stone-900">{item.quantity}</span>
-                    <button 
-                      onClick={() => updateQuantity(item._id, item.selectedColor, item.quantity + 1)}
-                      className="px-2 py-1 text-stone-500 hover:bg-stone-50 text-xs"
-                    >
-                      +
+                      {loadingId === item._id ? 'Removing...' : 'Remove Piece'}
                     </button>
                   </div>
-                  <button 
-                    onClick={() => removeCartItem(item._id, item.selectedColor)}
-                    className="text-[10px] uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors underline underline-offset-4"
-                  >
-                    Remove Piece
-                  </button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* RIGHT: ORDER SUMMARY SYSTEM */}
