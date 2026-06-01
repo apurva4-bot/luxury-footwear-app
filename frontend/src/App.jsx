@@ -139,7 +139,7 @@ function AuthPlaceholder() {
   
   // OTP Flow States
   const [otpSent, setOtpSent] = useState(false);
-  const [receivedOtp, setReceivedOtp] = useState(''); // Stores the mock/trial OTP
+  const [receivedOtp, setReceivedOtp] = useState(''); 
   const [userEnteredOtp, setUserEnteredOtp] = useState('');
 
   const [formData, setFormData] = useState({
@@ -159,19 +159,19 @@ function AuthPlaceholder() {
     }
 
     try {
+      // Endpoint matched exactly to backend server route /api/auth/send-otp
       const data = await fetchAPI('/auth/send-otp', {
         method: 'POST',
         body: JSON.stringify({ 
-          phone: (formData.phone || "").trim(),
-          email: "" // Fallback protection 
+          phone: (formData.phone || "").trim()
         })
       });
       
       setOtpSent(true);
-      // Store the trial OTP returned from backend (e.g., "123456" or a randomized trial code)
-      if (data.otp) {
-        setReceivedOtp(data.otp);
-        setMessage(`Trial OTP generated: ${data.otp}. Enter it below to log in.`);
+      // Your backend returns the generated code inside "debugOtp"
+      if (data.debugOtp) {
+        setReceivedOtp(data.debugOtp);
+        setMessage(`Trial OTP generated: ${data.debugOtp}. Enter it below to log in.`);
       } else {
         setMessage('Trial OTP sent to your phone number.');
       }
@@ -189,29 +189,26 @@ function AuthPlaceholder() {
     let payload = {};
 
     if (!isLogin) {
-      // Registration Flow
-      endpoint = '/auth/register';
+      // Registration Flow mapped to /api/auth/signup
+      endpoint = '/auth/signup';
       payload = {
-        name: formData.name || "",
-        email: (formData.email || "").trim(),
-        phone: (formData.phone || "").trim(),
+        // Mapping email to username field so your backend can save it safely
+        username: (formData.email || "").trim(),
         password: formData.password || ""
       };
     } else if (authMethod === 'email') {
-      // Email Login Flow
+      // Email/Username Login Flow mapped to /api/auth/login
       endpoint = '/auth/login';
       payload = {
-        email: (formData.email || "").trim(),
-        password: formData.password || "",
-        phone: "" // Prevent backend from crashing on phone.trim()
+        username: (formData.email || "").trim(),
+        password: formData.password || ""
       };
     } else {
-      // Phone OTP Verification Flow
+      // Phone OTP Verification Flow mapped to /api/auth/verify-otp
       endpoint = '/auth/verify-otp';
       payload = {
         phone: (formData.phone || "").trim(),
-        otp: (userEnteredOtp || "").trim(),
-        email: "" // Prevent backend from crashing on email.trim() if checked here
+        code: (userEnteredOtp || "").trim() // Fixed from "otp" to "code" to match backend expectations
       };
     }
 
@@ -229,7 +226,12 @@ function AuthPlaceholder() {
         if (data.user.cart) setCart(data.user.cart);
         if (data.user.wishlist) setWishlist(data.user.wishlist);
         
-        navigate('/');
+        // Automatic Role Routing Check
+        if (data.user && data.user.role === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate('/');
+        }
       }
     } catch (err) {
       console.error(err);
@@ -347,7 +349,6 @@ function AuthPlaceholder() {
               <label className="block text-[9px] uppercase tracking-widest text-stone-400 font-bold mb-1">Phone Number</label>
               <input 
                 type="tel" 
-                required
                 value={formData.phone}
                 onChange={e => setFormData({...formData, phone: e.target.value})}
                 className="w-full border border-stone-200 p-2 text-xs rounded-xs focus:outline-stone-900" 
