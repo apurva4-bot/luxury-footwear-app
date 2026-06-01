@@ -134,10 +134,9 @@ function AuthPlaceholder() {
   const { setUser, setCart, setWishlist } = useContext(AppContext);
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
-  const [authMethod, setAuthMethod] = useState('email'); // 'email' or 'phone'
+  const [authMethod, setAuthMethod] = useState('email'); 
   const [message, setMessage] = useState('');
   
-  // OTP Flow States
   const [otpSent, setOtpSent] = useState(false);
   const [receivedOtp, setReceivedOtp] = useState(''); 
   const [userEnteredOtp, setUserEnteredOtp] = useState('');
@@ -149,7 +148,6 @@ function AuthPlaceholder() {
     password: ''
   });
 
-  // 1. Request Trial OTP for Phone Login
   const handleRequestOtp = async (e) => {
     e.preventDefault();
     setMessage('');
@@ -159,7 +157,6 @@ function AuthPlaceholder() {
     }
 
     try {
-      // Endpoint matched exactly to backend server route /api/auth/send-otp
       const data = await fetchAPI('/auth/send-otp', {
         method: 'POST',
         body: JSON.stringify({ 
@@ -168,7 +165,6 @@ function AuthPlaceholder() {
       });
       
       setOtpSent(true);
-      // Your backend returns the generated code inside "debugOtp"
       if (data.debugOtp) {
         setReceivedOtp(data.debugOtp);
         setMessage(`Trial OTP generated: ${data.debugOtp}. Enter it below to log in.`);
@@ -180,7 +176,6 @@ function AuthPlaceholder() {
     }
   };
 
-  // 2. Submit Main Authentication (Email Login, Register, or Phone OTP Verification)
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage('');
@@ -189,26 +184,24 @@ function AuthPlaceholder() {
     let payload = {};
 
     if (!isLogin) {
-      // Registration Flow mapped to /api/auth/signup
       endpoint = '/auth/signup';
       payload = {
-        // Mapping email to username field so your backend can save it safely
         username: (formData.email || "").trim(),
+        email: (formData.email || "").trim(),
         password: formData.password || ""
       };
     } else if (authMethod === 'email') {
-      // Email/Username Login Flow mapped to /api/auth/login
       endpoint = '/auth/login';
       payload = {
         username: (formData.email || "").trim(),
+        email: (formData.email || "").trim(),
         password: formData.password || ""
       };
     } else {
-      // Phone OTP Verification Flow mapped to /api/auth/verify-otp
       endpoint = '/auth/verify-otp';
       payload = {
         phone: (formData.phone || "").trim(),
-        code: (userEnteredOtp || "").trim() // Fixed from "otp" to "code" to match backend expectations
+        code: (userEnteredOtp || "").trim()
       };
     }
 
@@ -226,7 +219,6 @@ function AuthPlaceholder() {
         if (data.user.cart) setCart(data.user.cart);
         if (data.user.wishlist) setWishlist(data.user.wishlist);
         
-        // Automatic Role Routing Check
         if (data.user && data.user.role === 'admin') {
           navigate('/admin');
         } else {
@@ -270,9 +262,7 @@ function AuthPlaceholder() {
         </div>
       )}
 
-      {/* Conditional Form Rendering based on login type */}
       {isLogin && authMethod === 'phone' ? (
-        // PHONE OTP LOGIN FORM
         <form onSubmit={otpSent ? handleSubmit : handleRequestOtp} className="space-y-4 text-left">
           <div>
             <label className="block text-[9px] uppercase tracking-widest text-stone-400 font-bold mb-1">Phone Number</label>
@@ -316,7 +306,6 @@ function AuthPlaceholder() {
           )}
         </form>
       ) : (
-        // EMAIL LOGIN OR REGISTRATION FORM
         <form onSubmit={handleSubmit} className="space-y-4 text-left">
           {!isLogin && (
             <div>
@@ -366,7 +355,7 @@ function AuthPlaceholder() {
               onChange={e => setFormData({...formData, password: e.target.value})}
               className="w-full border border-stone-200 p-2 text-xs rounded-xs focus:outline-stone-900" 
               placeholder="••••••••"
-          />
+            />
           </div>
 
           <button type="submit" className="w-full bg-stone-900 text-white py-2.5 text-[10px] uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors pt-3">
@@ -387,6 +376,8 @@ function AuthPlaceholder() {
     </div>
   );
 }
+
+export default AuthPlaceholder;
 function CartPlaceholder() {
   const { cart, setCart } = useContext(AppContext);
 
