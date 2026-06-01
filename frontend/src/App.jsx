@@ -148,13 +148,12 @@ function AuthPlaceholder() {
     e.preventDefault();
     setMessage('');
     
-    // Choose appropriate endpoint dynamically
-    const endpoint = isLogin 
-      ? `/auth/login/${authMethod}` 
-      : '/auth/register';
+    // Fixed: Pointing to your actual backend endpoints
+    const endpoint = isLogin ? '/auth/login' : '/auth/register';
       
     const payload = {
       password: formData.password,
+      // Pass email or phone based on your active form toggle selection
       ...(authMethod === 'email' || !isLogin ? { email: formData.email } : {}),
       ...(authMethod === 'phone' || !isLogin ? { phone: formData.phone } : {}),
       ...(!isLogin ? { name: formData.name } : {})
@@ -171,14 +170,14 @@ function AuthPlaceholder() {
         localStorage.setItem('user_details', JSON.stringify(data.user));
         setUser(data.user);
         
-        // Populate specific personalized instances instantly
         if (data.user.cart) setCart(data.user.cart);
         if (data.user.wishlist) setWishlist(data.user.wishlist);
         
         navigate('/');
       }
     } catch (err) {
-      setMessage(err.message || 'Authentication reference rejected. Please check fields.');
+      console.error(err);
+      setMessage(err.message || 'Authentication credentials rejected. Please try again.');
     }
   };
 
@@ -189,7 +188,7 @@ function AuthPlaceholder() {
       </h2>
 
       {message && (
-        <div className="p-3 text-[10px] uppercase tracking-wider mb-4 text-center bg-stone-50 border border-stone-200 text-stone-600">
+        <div className="p-3 text-[10px] uppercase tracking-wider mb-4 text-center bg-stone-50 border border-stone-200 text-stone-600 max-h-32 overflow-y-auto">
           {message}
         </div>
       )}
@@ -198,14 +197,14 @@ function AuthPlaceholder() {
         <div className="flex border-b border-stone-200 mb-6 text-xs uppercase tracking-wider">
           <button 
             type="button"
-            onClick={() => setAuthMethod('email')} 
+            onClick={() => { setAuthMethod('email'); setMessage(''); }} 
             className={`flex-1 pb-2 text-center border-b font-medium transition-colors ${authMethod === 'email' ? 'border-stone-900 text-stone-900' : 'border-transparent text-stone-400'}`}
           >
             Email Access
           </button>
           <button 
             type="button"
-            onClick={() => setAuthMethod('phone')} 
+            onClick={() => { setAuthMethod('phone'); setMessage(''); }} 
             className={`flex-1 pb-2 text-center border-b font-medium transition-colors ${authMethod === 'phone' ? 'border-stone-900 text-stone-900' : 'border-transparent text-stone-400'}`}
           >
             Phone Access
