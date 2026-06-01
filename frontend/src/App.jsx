@@ -377,7 +377,7 @@ function AuthPlaceholder() {
   );
 }
 
-export default AuthPlaceholder;
+export default App;
 function CartPlaceholder() {
   const { cart, setCart } = useContext(AppContext);
   const [loadingId, setLoadingId] = useState(null);
