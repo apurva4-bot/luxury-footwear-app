@@ -130,7 +130,161 @@ export default function App() {
   );
 }
 
-function AuthPlaceholder() { return <div className="text-center py-12 text-stone-400 uppercase text-xs tracking-widest">Authentication Interface Console</div>; }
+function AuthPlaceholder() {
+  const { setUser, setCart, setWishlist } = useContext(AppContext);
+  const navigate = useNavigate();
+  const [isLogin, setIsLogin] = useState(true);
+  const [authMethod, setAuthMethod] = useState('email'); // 'email' or 'phone'
+  const [message, setMessage] = useState('');
+  
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    password: ''
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setMessage('');
+    
+    // Choose appropriate endpoint dynamically
+    const endpoint = isLogin 
+      ? `/auth/login/${authMethod}` 
+      : '/auth/register';
+      
+    const payload = {
+      password: formData.password,
+      ...(authMethod === 'email' || !isLogin ? { email: formData.email } : {}),
+      ...(authMethod === 'phone' || !isLogin ? { phone: formData.phone } : {}),
+      ...(!isLogin ? { name: formData.name } : {})
+    };
+
+    try {
+      const data = await fetchAPI(endpoint, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user_details', JSON.stringify(data.user));
+        setUser(data.user);
+        
+        // Populate specific personalized instances instantly
+        if (data.user.cart) setCart(data.user.cart);
+        if (data.user.wishlist) setWishlist(data.user.wishlist);
+        
+        navigate('/');
+      }
+    } catch (err) {
+      setMessage(err.message || 'Authentication reference rejected. Please check fields.');
+    }
+  };
+
+  return (
+    <div className="max-w-md mx-auto bg-white border border-stone-200 p-6 md:p-8 my-12 rounded-sm shadow-sm text-stone-800">
+      <h2 className="text-sm font-medium uppercase tracking-widest text-center text-stone-900 mb-6 pb-2 border-b border-stone-100">
+        {isLogin ? 'Sign In To Account' : 'Create Luxury Account'}
+      </h2>
+
+      {message && (
+        <div className="p-3 text-[10px] uppercase tracking-wider mb-4 text-center bg-stone-50 border border-stone-200 text-stone-600">
+          {message}
+        </div>
+      )}
+
+      {isLogin && (
+        <div className="flex border-b border-stone-200 mb-6 text-xs uppercase tracking-wider">
+          <button 
+            type="button"
+            onClick={() => setAuthMethod('email')} 
+            className={`flex-1 pb-2 text-center border-b font-medium transition-colors ${authMethod === 'email' ? 'border-stone-900 text-stone-900' : 'border-transparent text-stone-400'}`}
+          >
+            Email Access
+          </button>
+          <button 
+            type="button"
+            onClick={() => setAuthMethod('phone')} 
+            className={`flex-1 pb-2 text-center border-b font-medium transition-colors ${authMethod === 'phone' ? 'border-stone-900 text-stone-900' : 'border-transparent text-stone-400'}`}
+          >
+            Phone Access
+          </button>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4 text-left">
+        {!isLogin && (
+          <div>
+            <label className="block text-[9px] uppercase tracking-widest text-stone-400 font-bold mb-1">Full Name</label>
+            <input 
+              type="text" 
+              required
+              value={formData.name}
+              onChange={e => setFormData({...formData, name: e.target.value})}
+              className="w-full border border-stone-200 p-2 text-xs rounded-xs focus:outline-stone-900" 
+              placeholder="Apurva Tonge"
+            />
+          </div>
+        )}
+
+        {(authMethod === 'email' || !isLogin) && (
+          <div>
+            <label className="block text-[9px] uppercase tracking-widest text-stone-400 font-bold mb-1">Email Address</label>
+            <input 
+              type="email" 
+              required
+              value={formData.email}
+              onChange={e => setFormData({...formData, email: e.target.value})}
+              className="w-full border border-stone-200 p-2 text-xs rounded-xs focus:outline-stone-900" 
+              placeholder="luxury@example.com"
+            />
+          </div>
+        )}
+
+        {(authMethod === 'phone' || !isLogin) && (
+          <div>
+            <label className="block text-[9px] uppercase tracking-widest text-stone-400 font-bold mb-1">Phone Number</label>
+            <input 
+              type="tel" 
+              required
+              value={formData.phone}
+              onChange={e => setFormData({...formData, phone: e.target.value})}
+              className="w-full border border-stone-200 p-2 text-xs rounded-xs focus:outline-stone-900" 
+              placeholder="e.g. 8432171256"
+            />
+          </div>
+        )}
+
+        <div>
+          <label className="block text-[9px] uppercase tracking-widest text-stone-400 font-bold mb-1">Security Password</label>
+          <input 
+            type="password" 
+            required
+            value={formData.password}
+            onChange={e => setFormData({...formData, password: e.target.value})}
+            className="w-full border border-stone-200 p-2 text-xs rounded-xs focus:outline-stone-900" 
+            placeholder="••••••••"
+          />
+        </div>
+
+        <button type="submit" className="w-full bg-stone-900 text-white py-2.5 text-[10px] uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors pt-3">
+          {isLogin ? 'Authorize Access' : 'Register Profile'}
+        </button>
+      </form>
+
+      <div className="mt-6 text-center pt-4 border-t border-stone-100">
+        <button 
+          type="button"
+          onClick={() => { setIsLogin(!isLogin); setMessage(''); }}
+          className="text-[10px] uppercase tracking-widest text-stone-500 hover:text-stone-900 underline underline-offset-4"
+        >
+          {isLogin ? "Don't have an account? Sign Up" : "Already registered? Sign In"}
+        </button>
+      </div>
+    </div>
+  );
+}
 function CartPlaceholder() {
   const { cart, setCart } = useContext(AppContext);
 
@@ -250,7 +404,95 @@ function CartPlaceholder() {
     </div>
   );
 }
-function WishlistPlaceholder() { return <div className="text-center py-12 text-stone-400 uppercase text-xs tracking-widest">Saved Items Vault</div>; }
+function WishlistPlaceholder() {
+  const { wishlist, setWishlist, setCart, user } = useContext(AppContext);
+  const navigate = useNavigate();
+
+  const handleRemoveFromWishlist = async (productId) => {
+    try {
+      const res = await fetchAPI('/wishlist', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'remove', productId })
+      });
+      setWishlist(res.wishlist || []);
+    } catch (err) {
+      // Fallback local modification to ensure UI reactivity
+      setWishlist(wishlist.filter(item => item._id !== productId));
+    }
+  };
+
+  const handleMoveToBag = async (product) => {
+    if (!user) return navigate('/auth');
+    try {
+      // Add item to cart with default size configuration standard
+      const res = await fetchAPI('/cart', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'add', productId: product._id, size: '38' })
+      });
+      setCart(res.cart);
+      
+      // Clean up wishlist item
+      await handleRemoveFromWishlist(product._id);
+      alert("Moved selected item directly to your shopping bag!");
+    } catch (err) {
+      alert("Error processing bag placement adjustments.");
+    }
+  };
+
+  return (
+    <div className="max-w-6xl mx-auto px-2 md:px-4 my-12 font-sans text-stone-800">
+      <h1 className="text-xl font-light uppercase tracking-widest text-center text-stone-900 mb-10 pb-4 border-b border-stone-100">
+        Your Wishlist Vault
+      </h1>
+
+      {wishlist && wishlist.length > 0 ? (
+        <div className="grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
+          {wishlist.map((item) => {
+            const mainTitle = item.name?.split(/(?=[a-z])/)[0]?.trim() || item.name;
+            return (
+              <div key={item._id} className="bg-white border border-stone-200/70 p-3 flex flex-col justify-between relative group rounded-sm shadow-xs">
+                <button 
+                  onClick={() => handleRemoveFromWishlist(item._id)}
+                  className="absolute top-2 right-2 p-1 text-stone-400 hover:text-red-500 bg-white/80 rounded-full transition-colors z-20"
+                  title="Remove from saved vault"
+                >
+                  <X size={14} />
+                </button>
+
+                <div className="w-full bg-stone-50 overflow-hidden relative aspect-[4/5] rounded-xs mb-3">
+                  <img 
+                    src={item.image?.split('|')[0] || '/images/placeholder.jpg'} 
+                    alt={item.name} 
+                    className="w-full h-full object-contain mix-blend-multiply" 
+                  />
+                </div>
+
+                <div className="text-left space-y-1 mb-3 flex-grow">
+                  <h3 className="text-[11px] md:text-xs font-semibold uppercase tracking-wider text-stone-900 truncate">{mainTitle}</h3>
+                  <p className="text-stone-900 font-bold text-[11px] md:text-xs">₹{Number(item.price).toLocaleString('en-IN')}</p>
+                </div>
+
+                <button 
+                  onClick={() => handleMoveToBag(item)}
+                  className="w-full bg-stone-900 text-white py-1.5 text-[9px] md:text-[10px] uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors rounded-xs mt-auto"
+                >
+                  Move To Bag (Size 38)
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="text-center py-16 border border-dashed border-stone-200 bg-stone-50/50 rounded-xs">
+          <p className="text-stone-400 text-xs tracking-wider mb-4 font-light">Your saved items vault is empty.</p>
+          <button onClick={() => navigate('/')} className="bg-stone-900 text-white text-[10px] uppercase tracking-widest px-6 py-2.5 font-medium hover:bg-stone-800 transition-colors pt-3">
+            Discover Styles
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 function AdminPlaceholder() {
   const { products, setProducts } = useContext(AppContext);
   const [form, setForm] = useState({
