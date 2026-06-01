@@ -131,10 +131,128 @@ export default function App() {
 }
 
 function AuthPlaceholder() { return <div className="text-center py-12 text-stone-400 uppercase text-xs tracking-widest">Authentication Interface Console</div>; }
-function CartPlaceholder() { return <div className="text-center py-12 text-stone-400 uppercase text-xs tracking-widest">Shopping Bag System</div>; }
+function CartPlaceholder() {
+  const { cart, setCart } = useContext(AppContext);
+
+  const updateQuantity = (itemId, selectedColor, newQty) => {
+    if (newQty < 1) {
+      removeCartItem(itemId, selectedColor);
+      return;
+    }
+    setCart(cart.map(item => 
+      (item._id === itemId && item.selectedColor === selectedColor) 
+        ? { ...item, quantity: newQty } 
+        : item
+    ));
+  };
+
+  const removeCartItem = (itemId, selectedColor) => {
+    setCart(cart.filter(item => !(item._id === itemId && item.selectedColor === selectedColor)));
+  };
+
+  const cartSubtotal = cart?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
+  const shippingFee = cartSubtotal >= 3000 || cartSubtotal === 0 ? 0 : 150;
+  const grandTotal = cartSubtotal + shippingFee;
+
+  return (
+    <div className="max-w-4xl mx-auto px-4 my-12 font-sans text-stone-800">
+      <h1 className="text-xl font-light uppercase tracking-widest text-center text-stone-900 mb-10 pb-4 border-b border-stone-100">
+        Your Shopping Bag
+      </h1>
+
+      {cart && cart.length > 0 ? (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start">
+          
+          {/* LEFT: CART ITEMS LIST */}
+          <div className="lg:col-span-2 divide-y divide-stone-200 border-t border-b border-stone-200">
+            {cart.map((item, idx) => (
+              <div key={`${item._id}-${item.selectedColor || idx}`} className="py-5 flex gap-4 items-center justify-between">
+                <div className="flex gap-4 items-center">
+                  <img 
+                    src={item.image} 
+                    alt={item.name} 
+                    className="w-20 h-24 object-cover border border-stone-100 rounded-xs"
+                  />
+                  <div className="space-y-1 text-left">
+                    <h3 className="text-xs uppercase tracking-wider font-medium text-stone-900">{item.name}</h3>
+                    {item.selectedColor && (
+                      <p className="text-[11px] text-stone-400 capitalize">Variant: {item.selectedColor}</p>
+                    )}
+                    <p className="text-xs font-medium text-stone-900 mt-2">₹{item.price.toLocaleString('en-IN')}</p>
+                  </div>
+                </div>
+
+                {/* CONTROLS QUANTITY & REMOVAL */}
+                <div className="flex flex-col items-end gap-3">
+                  <div className="flex items-center border border-stone-200">
+                    <button 
+                      onClick={() => updateQuantity(item._id, item.selectedColor, item.quantity - 1)}
+                      className="px-2 py-1 text-stone-500 hover:bg-stone-50 text-xs"
+                    >
+                      –
+                    </button>
+                    <span className="px-3 text-xs font-medium text-stone-900">{item.quantity}</span>
+                    <button 
+                      onClick={() => updateQuantity(item._id, item.selectedColor, item.quantity + 1)}
+                      className="px-2 py-1 text-stone-500 hover:bg-stone-50 text-xs"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <button 
+                    onClick={() => removeCartItem(item._id, item.selectedColor)}
+                    className="text-[10px] uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors underline underline-offset-4"
+                  >
+                    Remove Piece
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* RIGHT: ORDER SUMMARY SYSTEM */}
+          <div className="bg-stone-50 border border-stone-200 p-6 rounded-xs text-left">
+            <h2 className="text-xs uppercase tracking-widest font-bold text-stone-900 mb-4 pb-2 border-b border-stone-200">
+              Order Summary
+            </h2>
+            <div className="space-y-3 text-xs border-b border-stone-200 pb-4">
+              <div className="flex justify-between text-stone-600">
+                <span>Bag Subtotal</span>
+                <span>₹{cartSubtotal.toLocaleString('en-IN')}</span>
+              </div>
+              <div className="flex justify-between text-stone-600">
+                <span>Estimated Shipping</span>
+                <span>{shippingFee === 0 ? 'COMPLIMENTARY' : `₹${shippingFee}`}</span>
+              </div>
+            </div>
+            <div className="flex justify-between items-baseline font-medium text-stone-900 pt-4 mb-6">
+              <span className="text-xs uppercase tracking-wider">Estimated Total</span>
+              <span className="text-lg font-light">₹{grandTotal.toLocaleString('en-IN')}</span>
+            </div>
+
+            <button className="w-full bg-stone-900 text-white py-3 text-xs uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors pt-3.5 shadow-sm">
+              Proceed To Checkout
+            </button>
+            <p className="text-[10px] text-stone-400 tracking-wide text-center mt-3">
+              Secure transactions managed beautifully by RAWLES HEELS.
+            </p>
+          </div>
+
+        </div>
+      ) : (
+        <div className="text-center py-16 border border-dashed border-stone-200 bg-stone-50/50 rounded-xs">
+          <p className="text-stone-400 text-xs tracking-wider mb-4 font-light">Your shopping bag is completely empty.</p>
+          <a href="/" className="inline-block bg-stone-900 text-white text-[10px] uppercase tracking-widest px-6 py-2.5 font-medium hover:bg-stone-800 transition-colors pt-3">
+            Explore Collections
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
 function WishlistPlaceholder() { return <div className="text-center py-12 text-stone-400 uppercase text-xs tracking-widest">Saved Items Vault</div>; }
 function AdminPlaceholder() {
-  const { setProducts } = useContext(AppContext);
+  const { products, setProducts } = useContext(AppContext);
   const [form, setForm] = useState({
     name: '',
     price: '',
@@ -144,12 +262,16 @@ function AdminPlaceholder() {
   });
   const [message, setMessage] = useState('');
 
+  // --- Calculate Live Dashboard Analytics ---
+  const totalProducts = products?.length || 0;
+  const totalPriceVolume = products?.reduce((sum, item) => sum + (Number(item.price) || 0), 0) || 0;
+  const averagePrice = totalProducts > 0 ? Math.round(totalPriceVolume / totalProducts) : 0;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage('');
     
     try {
-      // Parse the comma-separated color variants if provided
       const variantsArray = form.variantsText ? form.variantsText.split(',').map(v => {
         const parts = v.split('|');
         return { 
@@ -171,106 +293,175 @@ function AdminPlaceholder() {
         body: JSON.stringify(payload)
       });
 
-      setMessage('Product added successfully!');
-      
-      // Clear form
+      setMessage('Product successfully published to storefront!');
       setForm({ name: '', price: '', image: '', category: 'luxury', variantsText: '' });
       
-      // Refresh the global context product catalog
+      // Refresh listing states globally
       const updatedProducts = await fetchAPI('/products');
       setProducts(updatedProducts);
     } catch (err) {
       console.error(err);
-      setMessage('Failed to add product. Make sure you are logged in as an admin.');
+      setMessage('Failed to add product. Verify administrative credentials.');
+    }
+  };
+
+  const handleDelete = async (productId) => {
+    if (!window.confirm('Are you sure you want to remove this product listing?')) return;
+    try {
+      await fetchAPI(`/products/${productId}`, { method: 'DELETE' });
+      setProducts(products.filter(p => p._id !== productId));
+    } catch (err) {
+      console.error('Error deleting product:', err);
     }
   };
 
   return (
-    <div className="max-w-xl mx-auto bg-white border border-stone-200 p-6 md:p-8 my-10 rounded-sm shadow-sm">
-      <h2 className="text-xl font-light uppercase tracking-widest text-stone-900 mb-6 text-center border-b border-stone-100 pb-4">
-        Product Management Console
-      </h2>
+    <div className="max-w-6xl mx-auto px-4 my-10 font-sans text-stone-800">
       
-      {message && (
-        <div className={`p-3 text-xs uppercase tracking-wider mb-4 text-center ${message.includes('successfully') ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
-          {message}
+      {/* 1. MANAGEMENT METRICS ANALYTICS BARS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        <div className="border border-stone-200 bg-white p-5 rounded-xs shadow-sm text-center">
+          <p className="text-[10px] uppercase tracking-widest text-stone-400 font-bold mb-1">Total Catalog Items</p>
+          <p className="text-3xl font-light text-stone-900">{totalProducts}</p>
         </div>
-      )}
+        <div className="border border-stone-200 bg-white p-5 rounded-xs shadow-sm text-center">
+          <p className="text-[10px] uppercase tracking-widest text-stone-400 font-bold mb-1">Total Asset Valuation</p>
+          <p className="text-3xl font-light text-stone-900">₹{totalPriceVolume.toLocaleString('en-IN')}</p>
+        </div>
+        <div className="border border-stone-200 bg-white p-5 rounded-xs shadow-sm text-center">
+          <p className="text-[10px] uppercase tracking-widest text-stone-400 font-bold mb-1">Average Piece Price</p>
+          <p className="text-3xl font-light text-stone-900">₹{averagePrice.toLocaleString('en-IN')}</p>
+        </div>
+      </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4 text-left">
-        <div>
-          <label className="block text-[10px] uppercase tracking-widest text-stone-500 font-bold mb-1">Product Name</label>
-          <input 
-            type="text" 
-            value={form.name} 
-            onChange={e => setForm({...form, name: e.target.value})} 
-            className="w-full border border-stone-200 p-2 text-xs rounded-xs focus:outline-stone-900" 
-            placeholder="e.g. RAWLES HEELS Bella Stiletto" 
-            required 
-          />
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
+        {/* 2. PRODUCT CREATION FORM */}
+        <div className="lg:col-span-2 bg-white border border-stone-200 p-6 rounded-xs shadow-sm">
+          <h2 className="text-sm font-medium uppercase tracking-widest text-stone-900 mb-6 pb-3 border-b border-stone-100">
+            Publish New Product
+          </h2>
+          
+          {message && (
+            <div className={`p-3 text-[11px] uppercase tracking-wider mb-4 text-center ${message.includes('successfully') ? 'bg-green-50 text-green-800 border border-green-100' : 'bg-red-50 text-red-800 border border-red-100'}`}>
+              {message}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-[10px] uppercase tracking-widest text-stone-500 font-bold mb-1">Product Name</label>
+              <input 
+                type="text" 
+                value={form.name} 
+                onChange={e => setForm({...form, name: e.target.value})} 
+                className="w-full border border-stone-200 p-2 text-xs focus:outline-stone-900" 
+                placeholder="e.g. RAWLES HEELS Bella Stiletto" 
+                required 
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] uppercase tracking-widest text-stone-500 font-bold mb-1">Price (INR)</label>
+              <input 
+                type="number" 
+                value={form.price} 
+                onChange={e => setForm({...form, price: e.target.value})} 
+                className="w-full border border-stone-200 p-2 text-xs focus:outline-stone-900" 
+                placeholder="e.g. 3500" 
+                required 
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] uppercase tracking-widest text-stone-500 font-bold mb-1">Primary Image URL</label>
+              <input 
+                type="text" 
+                value={form.image} 
+                onChange={e => setForm({...form, image: e.target.value})} 
+                className="w-full border border-stone-200 p-2 text-xs focus:outline-stone-900" 
+                placeholder="e.g. /images/products/heel_1.jpg" 
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] uppercase tracking-widest text-stone-500 font-bold mb-1">Collection Category</label>
+              <select 
+                value={form.category} 
+                onChange={e => setForm({...form, category: e.target.value})} 
+                className="w-full border border-stone-200 p-2 text-xs bg-white focus:outline-stone-900"
+              >
+                <option value="luxury">Trending Arrivals</option>
+                <option value="bellis">Bellis</option>
+                <option value="stiletto">Stiletto</option>
+                <option value="wedges">Wedges</option>
+                <option value="platform">Platform</option>
+                <option value="summer">Summer Special</option>
+                <option value="casual">Casual Wear</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[10px] uppercase tracking-widest text-stone-500 font-bold mb-1">Color Variants (Optional)</label>
+              <textarea 
+                value={form.variantsText} 
+                onChange={e => setForm({...form, variantsText: e.target.value})} 
+                className="w-full border border-stone-200 p-2 text-xs h-16 focus:outline-stone-900" 
+                placeholder="Nude|/img/nude.jpg, Black|/img/black.jpg" 
+              />
+            </div>
+
+            <button type="submit" className="w-full bg-stone-900 text-white py-2.5 text-[11px] uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors pt-3">
+              Publish to Storefront
+            </button>
+          </form>
         </div>
 
-        <div>
-          <label className="block text-[10px] uppercase tracking-widest text-stone-500 font-bold mb-1">Price (INR)</label>
-          <input 
-            type="number" 
-            value={form.price} 
-            onChange={e => setForm({...form, price: e.target.value})} 
-            className="w-full border border-stone-200 p-2 text-xs rounded-xs focus:outline-stone-900" 
-            placeholder="e.g. 3500" 
-            required 
-          />
+        {/* 3. LIVE PRODUCTS LISTINGS TABLE */}
+        <div className="lg:col-span-3 bg-white border border-stone-200 p-6 rounded-xs shadow-sm overflow-hidden">
+          <h2 className="text-sm font-medium uppercase tracking-widest text-stone-900 mb-6 pb-3 border-b border-stone-100">
+            Current Active Listings ({totalProducts})
+          </h2>
+          <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-stone-200 text-[10px] uppercase tracking-widest text-stone-400">
+                  <th className="pb-3 font-medium">Item Details</th>
+                  <th className="pb-3 font-medium">Category</th>
+                  <th className="pb-3 font-medium">Price</th>
+                  <th className="pb-3 font-medium text-center">Action</th>
+                </tr>
+              </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {products && products.map((product) => (
+                    <tr key={product._id} className="hover:bg-stone-50/50">
+                      <td className="py-3 pr-2 flex items-center gap-3">
+                        <img src={product.image} alt="" className="w-8 h-8 object-cover rounded-xs border border-stone-100" onError={(e)=>{e.target.src='https://placehold.co/40x40?text=Shoe'}} />
+                        <span className="font-medium text-stone-900 truncate max-w-[140px]">{product.name}</span>
+                      </td>
+                      <td className="py-3 text-stone-500 uppercase text-[10px] tracking-wider">{product.category}</td>
+                      <td className="py-3 text-stone-900 font-medium">List: ₹{product.price}</td>
+                      <td className="py-3 text-center">
+                        <button 
+                          onClick={() => handleDelete(product._id)}
+                          className="text-red-500 hover:text-red-700 uppercase text-[10px] font-bold tracking-widest px-2 py-1"
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {(!products || products.length === 0) && (
+                    <tr>
+                      <td colSpan="4" className="text-center py-8 text-stone-400 tracking-wide">No active catalog listings found.</td>
+                    </tr>
+                  )}
+                </tbody>
+            </table>
+          </div>
         </div>
+      </div>
 
-        <div>
-          <label className="block text-[10px] uppercase tracking-widest text-stone-500 font-bold mb-1">Primary Image URL</label>
-          <input 
-            type="text" 
-            value={form.image} 
-            onChange={e => setForm({...form, image: e.target.value})} 
-            className="w-full border border-stone-200 p-2 text-xs rounded-xs focus:outline-stone-900" 
-            placeholder="e.g. /images/products/heel_1.jpg" 
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-[10px] uppercase tracking-widest text-stone-500 font-bold mb-1">Collection Category</label>
-          <select 
-            value={form.category} 
-            onChange={e => setForm({...form, category: e.target.value})} 
-            className="w-full border border-stone-200 p-2 text-xs rounded-xs bg-white focus:outline-stone-900"
-          >
-            <option value="luxury">Trending Arrivals</option>
-            <option value="bellis">Bellis</option>
-            <option value="stiletto">Stiletto</option>
-            <option value="wedges">Wedges</option>
-            <option value="platform">Platform</option>
-            <option value="kitten">Kitten</option>
-            <option value="summer">Summer Special</option>
-            <option value="casual">Casual Wear</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-[10px] uppercase tracking-widest text-stone-500 font-bold mb-1">
-            Color Variants (Optional)
-          </label>
-          <textarea 
-            value={form.variantsText} 
-            onChange={e => setForm({...form, variantsText: e.target.value})} 
-            className="w-full border border-stone-200 p-2 text-xs rounded-xs h-20 focus:outline-stone-900" 
-            placeholder="Format: Color|ImageUrl, Color|ImageUrl (e.g. Nude|/img/nude.jpg, Black|/img/black.jpg)" 
-          />
-        </div>
-
-        <button 
-          type="submit" 
-          className="w-full bg-stone-900 text-white py-2.5 text-xs uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors rounded-xs pt-3"
-        >
-          Publish Product to Storefront
-        </button>
-      </form>
     </div>
   );
 }
