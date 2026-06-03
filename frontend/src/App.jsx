@@ -387,6 +387,9 @@ function AuthPlaceholder() {
 }
 
 function CartPlaceholder() {
+  const [showOrderSummary, setShowOrderSummary] = useState(false);
+  const [placedOrderDetails, setPlacedOrderDetails] = useState(null); 
+  
   const { cart, setCart } = useContext(AppContext);
 
   // 1. Calculations: Clean non-numeric characters and handle subtotal safely
@@ -561,10 +564,80 @@ function CartPlaceholder() {
             </div>
           </div>
 
-          <button className="w-full bg-stone-900 text-white py-3 text-xs uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors mt-8">
-            Proceed To Checkout
-          </button>
+          <button 
+  onClick={() => {
+    const orderSnapshot = {
+      orderId: "RWL-" + Math.floor(100000 + Math.random() * 900000),
+      items: cart, 
+      subtotal: subtotal,
+      total: subtotal,
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    };
+    setPlacedOrderDetails(orderSnapshot);
+    setShowOrderSummary(true);
+
+    // This communicates with your backend server in the background
+    fetchAPI('/orders/send-summary', {
+      method: 'POST',
+      body: JSON.stringify({ order: orderSnapshot, adminEmail: 'tongeapurva4@gmail.com' })
+    }).catch(err => console.error("Email sync failed:", err));
+  }}
+  className="w-full bg-stone-900 text-white py-3 text-xs uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors mt-8"
+>
+  Proceed To Checkout
+</button>
         </div>
+        {showOrderSummary && placedOrderDetails && (
+  <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div className="bg-white max-w-md w-full border border-stone-200 p-6 shadow-xl animate-fade-in">
+      <div className="flex justify-between items-center border-b border-stone-100 pb-3 mb-4">
+        <h3 className="text-xs uppercase tracking-widest font-bold text-stone-900">Order Placed Successfully</h3>
+        <button onClick={() => { setShowOrderSummary(false); setCart([]); }} className="text-stone-400 hover:text-stone-700">
+          <X size={16} />
+        </button>
+      </div>
+      
+      <div className="text-center my-4 bg-stone-50 py-3 border border-dashed border-stone-200">
+        <p className="text-[10px] uppercase tracking-wider text-stone-400">Confirmation Reference</p>
+        <p className="text-xs font-bold tracking-widest text-stone-900 mt-0.5">{placedOrderDetails.orderId}</p>
+      </div>
+
+      <div className="mb-4">
+        <h4 className="text-[10px] uppercase tracking-widest font-bold text-stone-500 mb-2">Manifest Summary</h4>
+        <div className="max-h-32 overflow-y-auto space-y-2 pr-1">
+          {placedOrderDetails.items.map((item, idx) => (
+            <div key={idx} className="flex justify-between items-center text-xs text-stone-600">
+              <span className="truncate max-w-[240px] uppercase tracking-tight">{item.name || "Luxury Footwear Selection"}</span>
+              <span className="font-medium text-stone-900">₹{Number(item.price).toLocaleString('en-IN')}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="border-t border-stone-200 pt-3 mt-3 space-y-1.5 text-xs">
+        <div className="flex justify-between text-stone-500">
+          <span>Subtotal</span>
+          <span>₹{Number(placedOrderDetails.subtotal).toLocaleString('en-IN')}</span>
+        </div>
+        <div className="flex justify-between text-stone-500 pb-1.5">
+          <span>Shipping</span>
+          <span className="text-[10px] tracking-wider uppercase text-emerald-600 font-medium">Complimentary</span>
+        </div>
+        <div className="flex justify-between font-bold text-stone-900 border-t border-stone-100 pt-2 text-sm tracking-widest">
+          <span>TOTAL SECURED</span>
+          <span>₹{Number(placedOrderDetails.total).toLocaleString('en-IN')}</span>
+        </div>
+      </div>
+
+      <button 
+        onClick={() => { setShowOrderSummary(false); setCart([]); }}
+        className="w-full bg-stone-900 text-white py-2.5 mt-5 text-[10px] uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors"
+      >
+        Continue Shopping
+      </button>
+    </div>
+  </div>
+)}
       </div>
     </div>
   );
