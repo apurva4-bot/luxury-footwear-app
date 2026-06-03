@@ -361,7 +361,7 @@ app.post('/api/orders/send-summary', async (req, res) => {
     to: adminEmail, 
     subject: `🚨 NEW BRAND ORDER PLACED - ${order.orderId}`,
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #e4e4e7; color: #1c1917; background-color: #ffffff;">
+      <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #e4e4e7; color: #1c1917; background-color: #d29393;">
         <h2 style="font-weight: 400; letter-spacing: 2px; text-transform: uppercase; font-size: 14px; margin-bottom: 20px; text-align: center; border-bottom: 1px solid #1c1917; padding-bottom: 12px;">Order Dispatch Manifest</h2>
         <p style="font-size: 11px; text-transform: uppercase; color: #71717a; margin: 4px 0;">Reference: <span style="font-weight: bold; color: #1c1917;">${order.orderId}</span></p>
         <p style="font-size: 11px; text-transform: uppercase; color: #71717a; margin: 4px 0;">Date Logged: <span style="font-weight: bold; color: #1c1917;">${order.date}</span></p>
