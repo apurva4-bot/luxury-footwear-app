@@ -381,14 +381,15 @@ export default App;
 function CartPlaceholder() {
   const { cart, setCart } = useContext(AppContext);
 
-  // 1. Calculate subtotal safely by checking both flat or nested fields
+  // 1. Calculations: Clean non-numeric characters and handle subtotal safely
   const calculateSubtotal = () => {
     if (!cart || !Array.isArray(cart)) return 0;
     return cart.reduce((total, item) => {
       if (!item) return total;
       
+      // Fallback cross-compatibility matrix for both flat and nested models
       const rawPrice = item.price ?? item.productId?.price ?? 0;
-      
+
       const cleanPrice = typeof rawPrice === 'string' 
         ? Number(rawPrice.replace(/[^0-9.]/g, '')) 
         : Number(rawPrice);
@@ -400,13 +401,27 @@ function CartPlaceholder() {
 
   const subtotal = calculateSubtotal();
 
-  // 2. Quantity modifier connecting cleanly to your backend
-  const handleQuantityChange = async (targetItem, action) => {
-    const itemId = targetItem._id || targetItem.id;
-    const productId = targetItem.productId?._id || targetItem.productId || itemId;
-    const size = targetItem.size;
+  // 2. Quantity Modifiers: Supports both raw parameter signatures and object definitions safely
+  const handleQuantityChange = async (firstParam, secondParam, thirdParam) => {
+    let productId;
+    let size;
+    let action;
+
+    // Handle structural variant where an entire item object is passed as the first parameter
+    if (typeof firstParam === 'object' && firstParam !== null) {
+      const targetItem = firstParam;
+      action = secondParam;
+      productId = targetItem.productId?._id || targetItem.productId || targetItem._id || targetItem.id;
+      size = targetItem.size;
+    } else {
+      // Handle fallback structural variant where individual IDs are passed explicitly
+      productId = firstParam;
+      size = secondParam;
+      action = thirdParam;
+    }
 
     try {
+      // Hits your exact endpoint infrastructure via fetchAPI
       const res = await fetchAPI('/cart', {
         method: 'POST',
         body: JSON.stringify({ action, productId, size })
@@ -417,18 +432,22 @@ function CartPlaceholder() {
       }
     } catch (err) {
       console.error("Failed to update cart quantities:", err);
-      
-      // UI Local Fallback State Sync
+
+      // Instant UI Fallback state sync engine so the application doesn't freeze
       if (action === 'delete') {
-        setCart(prev => prev.filter(i => (i._id || i.id) !== itemId));
+        setCart(prev => prev.filter(item => {
+          const id = item.productId?._id || item._id || item.id;
+          return id !== productId;
+        }));
       } else {
-        setCart(prev => prev.map(i => {
-          if ((i._id || i.id) === itemId) {
-            const currentQty = Number(i.quantity || 1);
+        setCart(prev => prev.map(item => {
+          const id = item.productId?._id || item._id || item.id;
+          if (id === productId && item.size === size) {
+            const currentQty = Number(item.quantity || 1);
             const newQty = action === 'add' ? currentQty + 1 : currentQty - 1;
-            return newQty > 0 ? { ...i, quantity: newQty } : null;
+            return newQty > 0 ? { ...item, quantity: newQty } : null;
           }
-          return i;
+          return item;
         }).filter(Boolean));
       }
     }
@@ -449,7 +468,7 @@ function CartPlaceholder() {
       </h2>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-        {/* Cart Items list layout */}
+        {/* Cart Items List */}
         <div className="lg:col-span-2 space-y-6">
           {cart.map((item, idx) => {
             if (!item) return null;
@@ -469,7 +488,7 @@ function CartPlaceholder() {
                   <div className="w-20 h-20 bg-stone-50 border overflow-hidden flex items-center justify-center">
                     <img 
                       src={primaryImage} 
-                      alt={product.name || 'Luxury Footwear'} 
+                      alt={product.name || 'Luxury Heels'} 
                       className="w-full h-full object-contain mix-blend-multiply"
                       onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=200'; }}
                     />
@@ -483,7 +502,7 @@ function CartPlaceholder() {
                   </div>
                 </div>
 
-                {/* Counter and deletion panel */}
+                {/* Quantity Control Buttons */}
                 <div className="flex items-center gap-6">
                   <div className="flex items-center border border-stone-200 bg-stone-50">
                     <button 
@@ -513,7 +532,7 @@ function CartPlaceholder() {
           })}
         </div>
 
-        {/* Totals Section */}
+        {/* Order Summary Sidebar */}
         <div className="bg-stone-50 p-6 border border-stone-100 h-fit">
           <h3 className="text-xs font-bold uppercase tracking-widest text-stone-900 mb-6 border-b border-stone-200 pb-3">
             Order Summary
