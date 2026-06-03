@@ -381,14 +381,15 @@ export default App;
 function CartPlaceholder() {
   const { cart, setCart } = useContext(AppContext);
 
-  // Robust calculation engine that strips non-numeric characters and updates total
+  // 1. ROBUST ARITHMETIC TO PREVENT NaN AND ₹0 VALUES
   const calculateSubtotal = () => {
     if (!cart || !Array.isArray(cart)) return 0;
     return cart.reduce((total, item) => {
-      // Safely find the price whether nested in productId or flat
+      if (!item) return total;
+      // Fallback matrix to find the product price whether nested or flat
       const rawPrice = item.productId?.price ?? item.price ?? 0;
       
-      // Clean up string-based numbers if symbols or commas leaked in
+      // Strip out commas or symbols if strings inadvertently leak out
       const cleanPrice = typeof rawPrice === 'string' 
         ? Number(rawPrice.replace(/[^0-9.]/g, '')) 
         : Number(rawPrice);
@@ -401,24 +402,26 @@ function CartPlaceholder() {
 
   const subtotal = calculateSubtotal();
 
-  // Handle item actions using your existing fetchAPI or local handlers
+  // 2. STABLE UPDATE HANDLING ENGINE
   const handleQuantityChange = async (productId, size, action) => {
     try {
+      // Fires straight to your structural route
       const res = await fetchAPI('/cart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, productId, size })
       });
+      
       if (res && res.cart) {
         setCart(res.cart);
-      } else {
-        // Fallback fallback to update state locally if server communication fails
-        if (action === 'delete') {
-          setCart(cart.filter(item => (item.productId?._id || item._id) !== productId));
-        }
       }
     } catch (err) {
-      console.error("Failed to update quantity:", err);
+      console.error("Failed to update cart quantities:", err);
+      
+      // Local fallback sync strategy if backend connection dropped
+      if (action === 'delete' || action === 'remove') {
+        setCart(prev => prev.filter(item => (item.productId?._id || item._id) !== productId));
+      }
     }
   };
 
@@ -440,10 +443,11 @@ function CartPlaceholder() {
         {/* Cart Items List */}
         <div className="lg:col-span-2 space-y-6">
           {cart.map((item, idx) => {
+            if (!item) return null;
             const product = item.productId || item; 
             const itemPrice = Number(product.price || 0);
             
-            // Clean up the image array or string paths seamlessly
+            // Image string splitter protection blocks
             let primaryImage = '/images/placeholder.jpg';
             if (product.image) {
               primaryImage = typeof product.image === 'string' 
@@ -457,9 +461,9 @@ function CartPlaceholder() {
                   <div className="w-20 h-20 bg-stone-50 border overflow-hidden flex items-center justify-center">
                     <img 
                       src={primaryImage} 
-                      alt={product.name} 
+                      alt={product.name || 'Footwear item'} 
                       className="w-full h-full object-contain mix-blend-multiply"
-                      onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=200'; }} // Clean fallback for invalid paths
+                      onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=200'; }}
                     />
                   </div>
                   <div>
