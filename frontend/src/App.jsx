@@ -381,34 +381,30 @@ export default App;
 function CartPlaceholder() {
   const { cart, setCart } = useContext(AppContext);
 
-  // 1. ROBUST ARITHMETIC TO PREVENT NaN AND ₹0 VALUES
+  // 1. Calculations: Clean non-numeric characters and handle subtotal safely
   const calculateSubtotal = () => {
     if (!cart || !Array.isArray(cart)) return 0;
     return cart.reduce((total, item) => {
       if (!item) return total;
-      // Fallback matrix to find the product price whether nested or flat
       const rawPrice = item.productId?.price ?? item.price ?? 0;
       
-      // Strip out commas or symbols if strings inadvertently leak out
       const cleanPrice = typeof rawPrice === 'string' 
         ? Number(rawPrice.replace(/[^0-9.]/g, '')) 
         : Number(rawPrice);
         
       const quantity = Number(item.quantity || 1);
-
       return total + (isNaN(cleanPrice) ? 0 : cleanPrice * quantity);
     }, 0);
   };
 
   const subtotal = calculateSubtotal();
 
-  // 2. STABLE UPDATE HANDLING ENGINE
+  // 2. Quantity Modifiers: Connects safely to your exact fetchAPI architecture
   const handleQuantityChange = async (productId, size, action) => {
     try {
-      // Fires straight to your structural route
+      // Hits /api/cart using your top-level helper function
       const res = await fetchAPI('/cart', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, productId, size })
       });
       
@@ -418,9 +414,19 @@ function CartPlaceholder() {
     } catch (err) {
       console.error("Failed to update cart quantities:", err);
       
-      // Local fallback sync strategy if backend connection dropped
-      if (action === 'delete' || action === 'remove') {
+      // UI Fallback: If network or backend fails, update locally so the user isn't stuck
+      if (action === 'delete') {
         setCart(prev => prev.filter(item => (item.productId?._id || item._id) !== productId));
+      } else {
+        setCart(prev => prev.map(item => {
+          const id = item.productId?._id || item._id;
+          if (id === productId && item.size === size) {
+            const currentQty = Number(item.quantity || 1);
+            const newQty = action === 'add' ? currentQty + 1 : currentQty - 1;
+            return newQty > 0 ? { ...item, quantity: newQty } : null;
+          }
+          return item;
+        }).filter(Boolean));
       }
     }
   };
@@ -440,14 +446,13 @@ function CartPlaceholder() {
       </h2>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-        {/* Cart Items List */}
+        {/* Cart Items */}
         <div className="lg:col-span-2 space-y-6">
           {cart.map((item, idx) => {
             if (!item) return null;
             const product = item.productId || item; 
             const itemPrice = Number(product.price || 0);
             
-            // Image string splitter protection blocks
             let primaryImage = '/images/placeholder.jpg';
             if (product.image) {
               primaryImage = typeof product.image === 'string' 
@@ -475,19 +480,19 @@ function CartPlaceholder() {
                   </div>
                 </div>
 
-                {/* Quantity adjustments and removal controls */}
+                {/* Counter and deletion elements */}
                 <div className="flex items-center gap-6">
                   <div className="flex items-center border border-stone-200 bg-stone-50">
                     <button 
                       onClick={() => handleQuantityChange(product._id || product.id, item.size, 'remove')} 
-                      className="px-2 py-1 text-stone-500 hover:text-stone-900 transition-colors text-xs"
+                      className="px-3 py-1 text-stone-500 hover:text-stone-900 transition-colors text-xs font-bold"
                     >
                       －
                     </button>
-                    <span className="text-xs px-2 font-medium text-stone-800">{item.quantity || 1}</span>
+                    <span className="text-xs px-1 font-medium text-stone-800">{item.quantity || 1}</span>
                     <button 
                       onClick={() => handleQuantityChange(product._id || product.id, item.size, 'add')} 
-                      className="px-2 py-1 text-stone-500 hover:text-stone-900 transition-colors text-xs"
+                      className="px-3 py-1 text-stone-500 hover:text-stone-900 transition-colors text-xs font-bold"
                     >
                       ＋
                     </button>
@@ -505,7 +510,7 @@ function CartPlaceholder() {
           })}
         </div>
 
-        {/* Order Summary Sidebar */}
+        {/* Totals Sidebar */}
         <div className="bg-stone-50 p-6 border border-stone-100 h-fit">
           <h3 className="text-xs font-bold uppercase tracking-widest text-stone-900 mb-6 border-b border-stone-200 pb-3">
             Order Summary
@@ -529,10 +534,6 @@ function CartPlaceholder() {
           <button className="w-full bg-stone-900 text-white py-3 text-xs uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors mt-8">
             Proceed To Checkout
           </button>
-          
-          <p className="text-center text-[9px] text-stone-400 tracking-wider mt-4">
-            Secure transactions managed beautifully by RAWLES HEELS.
-          </p>
         </div>
       </div>
     </div>
