@@ -380,178 +380,157 @@ function AuthPlaceholder() {
 export default App;
 function CartPlaceholder() {
   const { cart, setCart } = useContext(AppContext);
-  const [loadingId, setLoadingId] = useState(null);
 
-  const BACKEND_URL = "https://luxury-footwear-app.onrender.com";
+  // Robust calculation engine that strips non-numeric characters and updates total
+  const calculateSubtotal = () => {
+    if (!cart || !Array.isArray(cart)) return 0;
+    return cart.reduce((total, item) => {
+      // Safely find the price whether nested in productId or flat
+      const rawPrice = item.productId?.price ?? item.price ?? 0;
+      
+      // Clean up string-based numbers if symbols or commas leaked in
+      const cleanPrice = typeof rawPrice === 'string' 
+        ? Number(rawPrice.replace(/[^0-9.]/g, '')) 
+        : Number(rawPrice);
+        
+      const quantity = Number(item.quantity || 1);
 
-  // --- 1. SYNC QUANTITY LOGIC TO LOCAL STATE ---
-  const updateQuantity = (itemId, selectedColor, newQty) => {
-    // If quantity is dropped below 1, trigger the backend removal system automatically
-    if (newQty < 1) {
-      removeCartItem(itemId);
-      return;
-    }
-    
-    // Safely update quantity in local browser state
-    setCart(cart.map(item => 
-      (item && item._id === itemId) 
-        ? { ...item, quantity: Number(newQty) } 
-        : item
-    ));
+      return total + (isNaN(cleanPrice) ? 0 : cleanPrice * quantity);
+    }, 0);
   };
 
-  // --- 2. CONNECTED REMOVE TRIGGER TO YOUR RENDER DATABASE ---
-  const removeCartItem = async (itemId) => {
-    setLoadingId(itemId);
-    const token = localStorage.getItem('token');
+  const subtotal = calculateSubtotal();
 
+  // Handle item actions using your existing fetchAPI or local handlers
+  const handleQuantityChange = async (productId, size, action) => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/cart`, {
+      const res = await fetchAPI('/cart', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ 
-          action: 'remove', 
-          productId: itemId 
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, productId, size })
       });
-
-      const data = await res.json();
-      if (res.ok) {
-        // Enforce the newly filtered populated database list returned by your backend
-        setCart(data.cart || []);
+      if (res && res.cart) {
+        setCart(res.cart);
       } else {
-        console.error("Database deletion reported an error:", data.error);
+        // Fallback fallback to update state locally if server communication fails
+        if (action === 'delete') {
+          setCart(cart.filter(item => (item.productId?._id || item._id) !== productId));
+        }
       }
     } catch (err) {
-      console.error("Network fault during item removal:", err);
-    } finally {
-      setLoadingId(null);
+      console.error("Failed to update quantity:", err);
     }
   };
 
-  // --- 3. ROBUST, DEFENSIVE ARITHMETIC TO PREVENT NaN AND ₹0 ERRORS ---
-  const cartSubtotal = cart ? cart.reduce((sum, item) => {
-    if (!item) return sum;
-    
-    // Fallback protection: if quantity or price are missing/strings, parse them securely
-    const qty = item.quantity && !isNaN(Number(item.quantity)) ? Number(item.quantity) : 1;
-    const price = item.price && !isNaN(Number(item.price)) ? Number(item.price) : 0;
-    
-    return sum + (price * qty);
-  }, 0) : 0;
-
-  const shippingFee = cartSubtotal >= 3000 || cartSubtotal === 0 ? 0 : 150;
-  const grandTotal = cartSubtotal + shippingFee;
+  if (!cart || cart.length === 0) {
+    return (
+      <div className="text-center py-24 text-stone-400 uppercase text-xs tracking-widest">
+        Your Shopping Bag is Empty
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 my-12 font-sans text-stone-800">
-      <h1 className="text-xl font-light uppercase tracking-widest text-center text-stone-900 mb-10 pb-4 border-b border-stone-100">
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <h2 className="text-xl font-light uppercase tracking-widest text-stone-900 mb-8 border-b pb-4">
         Your Shopping Bag
-      </h1>
+      </h2>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+        {/* Cart Items List */}
+        <div className="lg:col-span-2 space-y-6">
+          {cart.map((item, idx) => {
+            const product = item.productId || item; 
+            const itemPrice = Number(product.price || 0);
+            
+            // Clean up the image array or string paths seamlessly
+            let primaryImage = '/images/placeholder.jpg';
+            if (product.image) {
+              primaryImage = typeof product.image === 'string' 
+                ? product.image.split('|')[0].trim() 
+                : Array.isArray(product.image) ? product.image[0] : product.image;
+            }
 
-      {cart && cart.length > 0 ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start">
-          
-          {/* LEFT: CART ITEMS LIST */}
-          <div className="lg:col-span-2 divide-y divide-stone-200 border-t border-b border-stone-200">
-            {cart.map((item, idx) => {
-              if (!item) return null; // Guard clause against broken structural items
-              
-              const currentQty = item.quantity && !isNaN(Number(item.quantity)) ? Number(item.quantity) : 1;
-              const currentPrice = item.price && !isNaN(Number(item.price)) ? Number(item.price) : 0;
-
-              return (
-                <div key={`${item._id}-${idx}`} className="py-5 flex gap-4 items-center justify-between">
-                  <div className="flex gap-4 items-center">
+            return (
+              <div key={item._id || idx} className="flex gap-4 border-b border-stone-100 pb-6 items-center justify-between">
+                <div className="flex gap-4 items-center">
+                  <div className="w-20 h-20 bg-stone-50 border overflow-hidden flex items-center justify-center">
                     <img 
-                      src={item.image} 
-                      alt={item.name} 
-                      className="w-20 h-24 object-cover border border-stone-100 rounded-xs"
+                      src={primaryImage} 
+                      alt={product.name} 
+                      className="w-full h-full object-contain mix-blend-multiply"
+                      onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=200'; }} // Clean fallback for invalid paths
                     />
-                    <div className="space-y-1 text-left">
-                      <h3 className="text-xs uppercase tracking-wider font-medium text-stone-900">{item.name}</h3>
-                      {item.selectedColor && (
-                        <p className="text-[11px] text-stone-400 capitalize">Variant: {item.selectedColor}</p>
-                      )}
-                      <p className="text-xs font-medium text-stone-900 mt-2">
-                        ₹{currentPrice.toLocaleString('en-IN')}
-                      </p>
-                    </div>
                   </div>
-
-                  {/* CONTROLS QUANTITY & REMOVAL */}
-                  <div className="flex flex-col items-end gap-3">
-                    <div className="flex items-center border border-stone-200">
-                      <button 
-                        type="button"
-                        onClick={() => updateQuantity(item._id, item.selectedColor, currentQty - 1)}
-                        className="px-2 py-1 text-stone-500 hover:bg-stone-50 text-xs select-none"
-                      >
-                        –
-                      </button>
-                      <span className="px-3 text-xs font-medium text-stone-900">{currentQty}</span>
-                      <button 
-                        type="button"
-                        onClick={() => updateQuantity(item._id, item.selectedColor, currentQty + 1)}
-                        className="px-2 py-1 text-stone-500 hover:bg-stone-50 text-xs select-none"
-                      >
-                        +
-                      </button>
-                    </div>
-                    <button 
-                      type="button"
-                      onClick={() => removeCartItem(item._id)}
-                      disabled={loadingId === item._id}
-                      className="text-[10px] uppercase tracking-widest text-stone-400 hover:text-stone-900 transition-colors underline underline-offset-4 disabled:opacity-50"
-                    >
-                      {loadingId === item._id ? 'Removing...' : 'Remove Piece'}
-                    </button>
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-900">{product.name || 'Luxury Footwear'}</h3>
+                    {item.size && <p className="text-[10px] text-stone-400 tracking-wide mt-0.5">Size: {item.size}</p>}
+                    <p className="text-stone-900 font-medium text-xs mt-1">
+                      ₹{itemPrice.toLocaleString('en-IN')}
+                    </p>
                   </div>
                 </div>
-              );
-            })}
+
+                {/* Quantity adjustments and removal controls */}
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center border border-stone-200 bg-stone-50">
+                    <button 
+                      onClick={() => handleQuantityChange(product._id || product.id, item.size, 'remove')} 
+                      className="px-2 py-1 text-stone-500 hover:text-stone-900 transition-colors text-xs"
+                    >
+                      －
+                    </button>
+                    <span className="text-xs px-2 font-medium text-stone-800">{item.quantity || 1}</span>
+                    <button 
+                      onClick={() => handleQuantityChange(product._id || product.id, item.size, 'add')} 
+                      className="px-2 py-1 text-stone-500 hover:text-stone-900 transition-colors text-xs"
+                    >
+                      ＋
+                    </button>
+                  </div>
+
+                  <button 
+                    onClick={() => handleQuantityChange(product._id || product.id, item.size, 'delete')} 
+                    className="text-stone-400 hover:text-red-600 uppercase text-[10px] tracking-widest font-medium transition-colors"
+                  >
+                    Remove Piece
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Order Summary Sidebar */}
+        <div className="bg-stone-50 p-6 border border-stone-100 h-fit">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-stone-900 mb-6 border-b border-stone-200 pb-3">
+            Order Summary
+          </h3>
+          
+          <div className="space-y-4 text-xs tracking-wide">
+            <div className="flex justify-between text-stone-600">
+              <span>Bag Subtotal</span>
+              <span className="font-semibold text-stone-900">₹{subtotal.toLocaleString('en-IN')}</span>
+            </div>
+            <div className="flex justify-between text-stone-600 border-b border-stone-200 pb-4">
+              <span>Estimated Shipping</span>
+              <span className="text-stone-500 uppercase tracking-widest text-[10px] font-medium">Complimentary</span>
+            </div>
+            <div className="flex justify-between text-stone-900 font-bold text-sm pt-2">
+              <span>ESTIMATED TOTAL</span>
+              <span>₹{subtotal.toLocaleString('en-IN')}</span>
+            </div>
           </div>
 
-          {/* RIGHT: ORDER SUMMARY SYSTEM */}
-          <div className="bg-stone-50 border border-stone-200 p-6 rounded-xs text-left">
-            <h2 className="text-xs uppercase tracking-widest font-bold text-stone-900 mb-4 pb-2 border-b border-stone-200">
-              Order Summary
-            </h2>
-            <div className="space-y-3 text-xs border-b border-stone-200 pb-4">
-              <div className="flex justify-between text-stone-600">
-                <span>Bag Subtotal</span>
-                <span>₹{cartSubtotal.toLocaleString('en-IN')}</span>
-              </div>
-              <div className="flex justify-between text-stone-600">
-                <span>Estimated Shipping</span>
-                <span>{shippingFee === 0 ? 'COMPLIMENTARY' : `₹${shippingFee}`}</span>
-              </div>
-            </div>
-            <div className="flex justify-between items-baseline font-medium text-stone-900 pt-4 mb-6">
-              <span className="text-xs uppercase tracking-wider">Estimated Total</span>
-              <span className="text-lg font-light">₹{grandTotal.toLocaleString('en-IN')}</span>
-            </div>
-
-            <button type="button" className="w-full bg-stone-900 text-white py-3 text-xs uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors pt-3.5 shadow-sm">
-              Proceed To Checkout
-            </button>
-            <p className="text-[10px] text-stone-400 tracking-wide text-center mt-3">
-              Secure transactions managed beautifully by RAWLES HEELS.
-            </p>
-          </div>
-
+          <button className="w-full bg-stone-900 text-white py-3 text-xs uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors mt-8">
+            Proceed To Checkout
+          </button>
+          
+          <p className="text-center text-[9px] text-stone-400 tracking-wider mt-4">
+            Secure transactions managed beautifully by RAWLES HEELS.
+          </p>
         </div>
-      ) : (
-        <div className="text-center py-16 border border-dashed border-stone-200 bg-stone-50/50 rounded-xs">
-          <p className="text-stone-400 text-xs tracking-wider mb-4 font-light">Your shopping bag is completely empty.</p>
-          <a href="/" className="inline-block bg-stone-900 text-white text-[10px] uppercase tracking-widest px-6 py-2.5 font-medium hover:bg-stone-800 transition-colors pt-3">
-            Explore Collections
-          </a>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
