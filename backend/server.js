@@ -326,16 +326,9 @@ app.get('/api/admin', requireAuth, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
-// ========================================================
-// THE SERVER LISTENING FUNCTION (KEEP THIS LAST)
-// ========================================================
-app.listen(process.env.PORT || 5000, '0.0.0.0', () => console.log("Server running smoothly"));
-
 // ========================================================
 // AUTOMATED ORDER NOTIFICATION MAILER SYSTEM
 // ========================================================
-
 app.post('/api/orders/send-summary', async (req, res) => {
   const { order, adminEmail } = req.body;
 
@@ -350,7 +343,7 @@ app.post('/api/orders/send-summary', async (req, res) => {
   }).join('');
 
   const mailOptions = {
-    from: process.env.EMAIL_USER, // Reuses your secure variable automatically!
+    from: process.env.EMAIL_USER, 
     to: adminEmail, 
     subject: `🚨 NEW BRAND ORDER PLACED - ${order.orderId}`,
     html: `
@@ -370,7 +363,6 @@ app.post('/api/orders/send-summary', async (req, res) => {
   };
 
   try {
-    // Reuses your original working transporter declaration safely
     await transporter.sendMail(mailOptions);
     res.status(200).json({ success: true, message: "Email dispatched successfully." });
   } catch (error) {
