@@ -381,13 +381,12 @@ export default App;
 function CartPlaceholder() {
   const { cart, setCart } = useContext(AppContext);
 
-  // 1. MATCH PRICE MAPPING (Using item.price directly to fix ₹0 calculation)
+  // 1. Calculate subtotal safely by checking both flat or nested fields
   const calculateSubtotal = () => {
     if (!cart || !Array.isArray(cart)) return 0;
     return cart.reduce((total, item) => {
       if (!item) return total;
       
-      // Flat structure fallback alignment
       const rawPrice = item.price ?? item.productId?.price ?? 0;
       
       const cleanPrice = typeof rawPrice === 'string' 
@@ -401,9 +400,8 @@ function CartPlaceholder() {
 
   const subtotal = calculateSubtotal();
 
-  // 2. MATCH IDENTIFIER MAPPING (Using item._id / product._id fallback matrices)
+  // 2. Quantity modifier connecting cleanly to your backend
   const handleQuantityChange = async (targetItem, action) => {
-    // Safely parse the item ID and product ID fields
     const itemId = targetItem._id || targetItem.id;
     const productId = targetItem.productId?._id || targetItem.productId || itemId;
     const size = targetItem.size;
@@ -420,7 +418,7 @@ function CartPlaceholder() {
     } catch (err) {
       console.error("Failed to update cart quantities:", err);
       
-      // Instant UI Fallback: Keeps app interactive even if backend database hits a snag
+      // UI Local Fallback State Sync
       if (action === 'delete') {
         setCart(prev => prev.filter(i => (i._id || i.id) !== itemId));
       } else {
@@ -451,7 +449,7 @@ function CartPlaceholder() {
       </h2>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-        {/* Cart Items List */}
+        {/* Cart Items list layout */}
         <div className="lg:col-span-2 space-y-6">
           {cart.map((item, idx) => {
             if (!item) return null;
@@ -485,7 +483,7 @@ function CartPlaceholder() {
                   </div>
                 </div>
 
-                {/* Quantity Control Panel */}
+                {/* Counter and deletion panel */}
                 <div className="flex items-center gap-6">
                   <div className="flex items-center border border-stone-200 bg-stone-50">
                     <button 
@@ -515,7 +513,7 @@ function CartPlaceholder() {
           })}
         </div>
 
-        {/* Order Summary Sidebar */}
+        {/* Totals Section */}
         <div className="bg-stone-50 p-6 border border-stone-100 h-fit">
           <h3 className="text-xs font-bold uppercase tracking-widest text-stone-900 mb-6 border-b border-stone-200 pb-3">
             Order Summary
