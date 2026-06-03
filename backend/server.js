@@ -327,8 +327,10 @@ app.get('/api/admin', requireAuth, async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
+// ========================================================
+// THE SERVER LISTENING FUNCTION (KEEP THIS LAST)
+// ========================================================
+app.listen(process.env.PORT || 5000, '0.0.0.0', () => console.log("Server running smoothly"));
 
 // ========================================================
 // AUTOMATED ORDER NOTIFICATION MAILER SYSTEM
