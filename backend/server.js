@@ -334,18 +334,18 @@ app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`))
 // AUTOMATED ORDER NOTIFICATION MAILER SYSTEM
 // ========================================================
 
-const transporter = nodemailer.createTransport({
+// CHANGED THIS NAME TO AVOID CONFLICTS:
+const orderMailerTransporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: 'tongeapurva4@gmail.com',         
-    pass: 'your-16-character-app-password' // Paste your 16-character Google App Password here
+    pass: 'your-16-character-app-password' // Replace with your Google App Password string
   }
 });
 
 app.post('/api/orders/send-summary', async (req, res) => {
   const { order, adminEmail } = req.body;
 
-  // Build rows for each luxury shoe in the order summary template
   const itemDetailsHTML = order.items.map(item => {
     const prod = item.productId || item;
     return `
@@ -382,7 +382,8 @@ app.post('/api/orders/send-summary', async (req, res) => {
   };
 
   try {
-    await transporter.sendMail(mailOptions);
+    // CHANGED TO USE THE NEW UNIQUE NAME HERE AS WELL:
+    await orderMailerTransporter.sendMail(mailOptions);
     res.status(200).json({ success: true, message: "Email dispatched successfully to admin." });
   } catch (error) {
     console.error("Mail server hook error:", error);
