@@ -381,12 +381,14 @@ export default App;
 function CartPlaceholder() {
   const { cart, setCart } = useContext(AppContext);
 
-  // 1. Calculations: Clean non-numeric characters and handle subtotal safely
+  // 1. MATCH PRICE MAPPING (Using item.price directly to fix ₹0 calculation)
   const calculateSubtotal = () => {
     if (!cart || !Array.isArray(cart)) return 0;
     return cart.reduce((total, item) => {
       if (!item) return total;
-      const rawPrice = item.productId?.price ?? item.price ?? 0;
+      
+      // Flat structure fallback alignment
+      const rawPrice = item.price ?? item.productId?.price ?? 0;
       
       const cleanPrice = typeof rawPrice === 'string' 
         ? Number(rawPrice.replace(/[^0-9.]/g, '')) 
@@ -399,10 +401,14 @@ function CartPlaceholder() {
 
   const subtotal = calculateSubtotal();
 
-  // 2. Quantity Modifiers: Connects safely to your exact fetchAPI architecture
-  const handleQuantityChange = async (productId, size, action) => {
+  // 2. MATCH IDENTIFIER MAPPING (Using item._id / product._id fallback matrices)
+  const handleQuantityChange = async (targetItem, action) => {
+    // Safely parse the item ID and product ID fields
+    const itemId = targetItem._id || targetItem.id;
+    const productId = targetItem.productId?._id || targetItem.productId || itemId;
+    const size = targetItem.size;
+
     try {
-      // Hits /api/cart using your top-level helper function
       const res = await fetchAPI('/cart', {
         method: 'POST',
         body: JSON.stringify({ action, productId, size })
@@ -414,18 +420,17 @@ function CartPlaceholder() {
     } catch (err) {
       console.error("Failed to update cart quantities:", err);
       
-      // UI Fallback: If network or backend fails, update locally so the user isn't stuck
+      // Instant UI Fallback: Keeps app interactive even if backend database hits a snag
       if (action === 'delete') {
-        setCart(prev => prev.filter(item => (item.productId?._id || item._id) !== productId));
+        setCart(prev => prev.filter(i => (i._id || i.id) !== itemId));
       } else {
-        setCart(prev => prev.map(item => {
-          const id = item.productId?._id || item._id;
-          if (id === productId && item.size === size) {
-            const currentQty = Number(item.quantity || 1);
+        setCart(prev => prev.map(i => {
+          if ((i._id || i.id) === itemId) {
+            const currentQty = Number(i.quantity || 1);
             const newQty = action === 'add' ? currentQty + 1 : currentQty - 1;
-            return newQty > 0 ? { ...item, quantity: newQty } : null;
+            return newQty > 0 ? { ...i, quantity: newQty } : null;
           }
-          return item;
+          return i;
         }).filter(Boolean));
       }
     }
@@ -446,12 +451,12 @@ function CartPlaceholder() {
       </h2>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-        {/* Cart Items */}
+        {/* Cart Items List */}
         <div className="lg:col-span-2 space-y-6">
           {cart.map((item, idx) => {
             if (!item) return null;
             const product = item.productId || item; 
-            const itemPrice = Number(product.price || 0);
+            const itemPrice = Number(item.price || product.price || 0);
             
             let primaryImage = '/images/placeholder.jpg';
             if (product.image) {
@@ -466,13 +471,13 @@ function CartPlaceholder() {
                   <div className="w-20 h-20 bg-stone-50 border overflow-hidden flex items-center justify-center">
                     <img 
                       src={primaryImage} 
-                      alt={product.name || 'Footwear item'} 
+                      alt={product.name || 'Luxury Footwear'} 
                       className="w-full h-full object-contain mix-blend-multiply"
                       onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=200'; }}
                     />
                   </div>
                   <div>
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-900">{product.name || 'Luxury Footwear'}</h3>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-900">{product.name || 'Luxury Heels'}</h3>
                     {item.size && <p className="text-[10px] text-stone-400 tracking-wide mt-0.5">Size: {item.size}</p>}
                     <p className="text-stone-900 font-medium text-xs mt-1">
                       ₹{itemPrice.toLocaleString('en-IN')}
@@ -480,26 +485,26 @@ function CartPlaceholder() {
                   </div>
                 </div>
 
-                {/* Counter and deletion elements */}
+                {/* Quantity Control Panel */}
                 <div className="flex items-center gap-6">
                   <div className="flex items-center border border-stone-200 bg-stone-50">
                     <button 
-                      onClick={() => handleQuantityChange(product._id || product.id, item.size, 'remove')} 
-                      className="px-3 py-1 text-stone-500 hover:text-stone-900 transition-colors text-xs font-bold"
+                      onClick={() => handleQuantityChange(item, 'remove')} 
+                      className="px-3 py-1 text-stone-500 hover:text-stone-900 text-xs font-bold"
                     >
                       －
                     </button>
                     <span className="text-xs px-1 font-medium text-stone-800">{item.quantity || 1}</span>
                     <button 
-                      onClick={() => handleQuantityChange(product._id || product.id, item.size, 'add')} 
-                      className="px-3 py-1 text-stone-500 hover:text-stone-900 transition-colors text-xs font-bold"
+                      onClick={() => handleQuantityChange(item, 'add')} 
+                      className="px-3 py-1 text-stone-500 hover:text-stone-900 text-xs font-bold"
                     >
                       ＋
                     </button>
                   </div>
 
                   <button 
-                    onClick={() => handleQuantityChange(product._id || product.id, item.size, 'delete')} 
+                    onClick={() => handleQuantityChange(item, 'delete')} 
                     className="text-stone-400 hover:text-red-600 uppercase text-[10px] tracking-widest font-medium transition-colors"
                   >
                     Remove Piece
@@ -510,7 +515,7 @@ function CartPlaceholder() {
           })}
         </div>
 
-        {/* Totals Sidebar */}
+        {/* Order Summary Sidebar */}
         <div className="bg-stone-50 p-6 border border-stone-100 h-fit">
           <h3 className="text-xs font-bold uppercase tracking-widest text-stone-900 mb-6 border-b border-stone-200 pb-3">
             Order Summary
