@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { AppContext } from './App.jsx';
+import { AppContext } from './App';
 
 export default function ProductDetailPage() {
   const { id } = useParams();
