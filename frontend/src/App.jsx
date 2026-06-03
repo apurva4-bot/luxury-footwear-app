@@ -147,7 +147,7 @@ function AuthPlaceholder() {
     phone: '',
     password: ''
   });
-
+  const [showPassword, setShowPassword] = useState(false);
   const handleRequestOtp = async (e) => {
     e.preventDefault();
     setMessage('');
@@ -347,16 +347,25 @@ function AuthPlaceholder() {
           )}
 
           <div>
-            <label className="block text-[9px] uppercase tracking-widest text-stone-400 font-bold mb-1">Security Password</label>
-            <input 
-              type="password" 
-              required
-              value={formData.password}
-              onChange={e => setFormData({...formData, password: e.target.value})}
-              className="w-full border border-stone-200 p-2 text-xs rounded-xs focus:outline-stone-900" 
-              placeholder="••••••••"
-            />
-          </div>
+  <label className="block text-[9px] uppercase tracking-widest text-stone-400 font-bold mb-1">Security Password</label>
+  <div className="relative w-full">
+    <input
+      type={showPassword ? "text" : "password"}
+      required
+      value={formData.password}
+      onChange={(e) => setFormData({...formData, password: e.target.value})}
+      className="w-full border border-stone-200 p-2 text-xs rounded-xs focus:outline-stone-900 pr-10"
+      placeholder="••••••••"
+    />
+    <button
+      type="button"
+      onClick={() => setShowPassword(!showPassword)}
+      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 transition-colors"
+    >
+      {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+    </button>
+  </div>
+</div>
 
           <button type="submit" className="w-full bg-stone-900 text-white py-2.5 text-[10px] uppercase tracking-widest font-medium hover:bg-stone-800 transition-colors pt-3">
             {isLogin ? 'Authorize Access' : 'Register Profile'}
