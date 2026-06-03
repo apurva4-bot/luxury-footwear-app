@@ -329,3 +329,63 @@ app.get('/api/admin', requireAuth, async (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
+
+// ========================================================
+// AUTOMATED ORDER NOTIFICATION MAILER SYSTEM
+// ========================================================
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'tongeapurva4@gmail.com',         
+    pass: 'your-16-character-app-password' // Paste your 16-character Google App Password here
+  }
+});
+
+app.post('/api/orders/send-summary', async (req, res) => {
+  const { order, adminEmail } = req.body;
+
+  // Build rows for each luxury shoe in the order summary template
+  const itemDetailsHTML = order.items.map(item => {
+    const prod = item.productId || item;
+    return `
+      <li style="padding: 8px 0; border-bottom: 1px solid #e4e4e7; display: flex; justify-content: space-between; font-size: 12px;">
+        <span style="text-transform: uppercase; tracking-spacing: 0.5px;">${prod.name || "Luxury Selection"} (Size: ${item.size || '38'})</span>
+        <strong style="color: #1c1917;">x${item.quantity || 1} - ₹${Number(item.price || prod.price || 0).toLocaleString('en-IN')}</strong>
+      </li>
+    `;
+  }).join('');
+
+  const mailOptions = {
+    from: '"Luxury Footwear Hub" <tongeapurva4@gmail.com>',
+    to: adminEmail, 
+    subject: `🚨 NEW BRAND ORDER PLACED - ${order.orderId}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #e4e4e7; color: #1c1917; background-color: #ffffff;">
+        <h2 style="font-weight: 400; letter-spacing: 2px; text-transform: uppercase; font-size: 14px; margin-bottom: 20px; text-align: center; border-bottom: 1px solid #1c1917; padding-bottom: 12px;">Order Dispatch Manifest</h2>
+        <p style="font-size: 11px; text-transform: uppercase; color: #71717a; margin: 4px 0;">Reference: <span style="font-weight: bold; color: #1c1917;">${order.orderId}</span></p>
+        <p style="font-size: 11px; text-transform: uppercase; color: #71717a; margin: 4px 0;">Date Logged: <span style="font-weight: bold; color: #1c1917;">${order.date}</span></p>
+        
+        <h3 style="font-size: 11px; text-transform: uppercase; margin-top: 24px; color: #a1a1aa; border-bottom: 1px solid #f4f4f5; padding-bottom: 4px;">Items Ordered</h3>
+        <ul style="list-style: none; padding: 0; margin: 0;">
+          ${itemDetailsHTML}
+        </ul>
+        
+        <div style="margin-top: 24px; padding-top: 16px; border-top: 2px solid #1c1917;">
+          <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; letter-spacing: 1px;">
+            <span>TOTAL SECURED VALUE:</span>
+            <span>₹${Number(order.total).toLocaleString('en-IN')}</span>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    res.status(200).json({ success: true, message: "Email dispatched successfully to admin." });
+  } catch (error) {
+    console.error("Mail server hook error:", error);
+    res.status(500).json({ success: false, error: "Failed to forward notification to admin inbox." });
+  }
+});
