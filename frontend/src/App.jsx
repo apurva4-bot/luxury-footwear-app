@@ -377,7 +377,6 @@ function AuthPlaceholder() {
   );
 }
 
-export default App;
 function CartPlaceholder() {
   const { cart, setCart } = useContext(AppContext);
 
